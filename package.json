@@ -1,6 +1,6 @@
 {
     "name": "rollup-plugin-node-externals",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Automatically declare NodeJS built-in modules and npm dependencies as 'external' in Rollup config",
     "main": "dist/externals.cjs.js",
     "module": "dist/externals.esm.js",
