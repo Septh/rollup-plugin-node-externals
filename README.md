@@ -41,7 +41,7 @@ export default {
         devDeps: true,  // include pkg.devDependencies (default: true)
         peerDeps: true, // include pkg.peerDependencies (default: true)
         optDeps: true,  // include pkg.optionalDependencies (default: true)
-        except: []      // exceptions
+        except: []      // exceptions (default: []) -- see below
     })
   ],
   external: [          // Rollup's `external` option has precedence -- see below
@@ -55,8 +55,8 @@ export default {
 By default, the plugin will mark Node built-in modules and _all_ your dependencies as external.
 
 - Node built-in modules (eg, `path`, `fs`, etc.) are always external. The list of built-ins is obtained via [the `builtin-modules` package](https://github.com/sindresorhus/builtin-modules), by Sindre Sorhus.
-- Set the `deps`, `devDeps`, `peerDeps` and/or `optDeps` options to `false` to prevent the corresponding dependencies in your `package.json` file from being marked as external, therefore letting Rollup bundle them with your code.
-- Use the `except` option to filter out the dependencies you want bundled with your code. It can be an array of names or regexes, for example:
+- Set the `deps`, `devDeps`, `peerDeps` and/or `optDeps` options to `false` to prevent the corresponding dependencies in your `package.json` file from being marked as external, therefore letting Rollup bundle them with your code, **or**...
+- Use the `except` option to remove certain dependencies from the list of externals. `except` can be a string, a regex, or an array of those, for example:
 
 ```js
 externals({
@@ -69,6 +69,7 @@ externals({
 ```
 
 - Rollup's `external` option is always honored, no matter what:
+
 ```js
 plugins: [
     externals({
