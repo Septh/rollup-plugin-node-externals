@@ -5,6 +5,11 @@
     "main": "dist/externals.cjs.js",
     "module": "dist/externals.esm.js",
     "typings": "dist/externals.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Septh/rollup-plugin-node-externals"
+    },
+    "homepage": "https://github.com/Septh/rollup-plugin-node-externals",
     "scripts": {
         "prebuild": "trash dist/*",
         "build": "rollup -c",
