@@ -1,0 +1,34 @@
+{
+    "compilerOptions": {
+        // Code generation
+		"target": "es2015",
+        "module": "esnext",
+        "moduleResolution": "node",
+        "plugins": [
+            { "name": "typescript-tslint-plugin" }
+        ],
+        "sourceMap": true,
+        "declaration": true,
+        "removeComments": true,
+        "lib": [
+            "es2017",
+        ],
+
+        "esModuleInterop": true, // Enables the following:
+        // "allowSyntheticDefaultImports": true,
+
+        // Type checkings
+        "checkJs": false,
+        "strict": true, // Enables the following:
+            // "noImplicitAny": true,
+            // "noImplicitThis": true,
+            // "alwaysStrict": true,
+            // "strictBindCallApply": true,
+            // "strictNullChecks": true,
+            // "strictFunctionTypes": true,
+            // "strictPropertyInitialization": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": true,
+        "noUnusedParameters": true
+    }
+}

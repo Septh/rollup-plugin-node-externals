@@ -1,0 +1,38 @@
+{
+    "name": "rollup-plugin-node-externals",
+    "version": "1.0.0",
+    "description": "Automatically declare NodeJS built-in modules and npm dependencies as 'external' in Rollup config",
+    "main": "dist/externals.cjs.js",
+    "module": "dist/externals.esm.js",
+    "typings": "dist/externals.d.ts",
+    "scripts": {
+        "prebuild": "trash dist/*",
+        "build": "rollup -c",
+        "watch": "rollup -cw"
+    },
+    "files": [
+        "dist/*.js",
+        "dist/*.d.ts"
+    ],
+    "keywords": [
+        "rollup",
+        "rollup-plugin",
+        "npm",
+        "modules",
+        "external"
+    ],
+    "author": "Stephan Schreiber <septh@sfr.fr>",
+    "license": "MIT",
+    "dependencies": {
+        "builtin-modules": "^3.0.0"
+    },
+    "devDependencies": {
+        "rollup": "^1.1.2",
+        "rollup-plugin-commonjs": "^9.2.0",
+        "rollup-plugin-node-resolve": "^4.0.0",
+        "rollup-plugin-typescript2": "^0.19.2",
+        "trash": "^4.3.0",
+        "typescript": "^3.2.4",
+        "typescript-tslint-plugin": "^0.3.0"
+    }
+}
