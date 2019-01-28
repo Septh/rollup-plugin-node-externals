@@ -15,5 +15,8 @@ export default {
         resolve(),
         commonjs(),
         typescript()
+    ],
+    external: [
+        'path'
     ]
 }

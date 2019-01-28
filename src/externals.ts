@@ -2,6 +2,7 @@
 // and npm dependencies as 'external'.
 // Useful when bundling a NodeJS or an Electron app and you don't want to bundle
 // npm modules with your own code but rather require() them at runtime.
+import { resolve } from 'path'
 import { PluginImpl } from 'rollup'
 
 export interface Options {
@@ -26,7 +27,7 @@ const externals: PluginImpl<Options> = (options = {}) => {
     let externals: string[] = require('builtin-modules')
 
     // Conditionally add dependencies, devDependencies, peerDependencies and optionalDependencies
-    const pkg = require('./package.json')
+    const pkg = require(resolve(process.cwd(), 'package.json'))
     externals = externals.concat(
         opts.deps     ? Object.keys(pkg.dependencies         || {}) : [],
         opts.devDeps  ? Object.keys(pkg.devDependencies      || {}) : [],
