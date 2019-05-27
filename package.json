@@ -1,28 +1,30 @@
 {
     "name": "rollup-plugin-node-externals",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Automatically declare NodeJS built-in modules and npm dependencies as 'external' in Rollup config",
     "main": "dist/externals.cjs.js",
     "module": "dist/externals.esm.js",
-    "typings": "dist/externals.d.ts",
+    "typings": "index.d.ts",
     "repository": {
         "type": "git",
         "url": "https://github.com/Septh/rollup-plugin-node-externals"
     },
     "homepage": "https://github.com/Septh/rollup-plugin-node-externals",
     "scripts": {
-        "prebuild": "trash dist/*",
+        "prebuild": "trash dist",
         "build": "rollup -c",
         "watch": "rollup -cw"
     },
     "files": [
         "dist/*.js",
-        "dist/*.d.ts"
+        "index.d.ts",
+        "README.md"
     ],
     "keywords": [
         "rollup",
         "rollup-plugin",
         "npm",
+        "node",
         "modules",
         "external"
     ],

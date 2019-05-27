@@ -1,21 +1,14 @@
 // A Rollup plugin that automatically declares NodeJS built-in modules
 // and npm dependencies as 'external'.
 // Useful when bundling a NodeJS or an Electron app and you don't want to bundle
-// npm modules with your own code but rather require() them at runtime.
+// node/npm modules with your own code but rather require() them at runtime.
 import { resolve } from 'path'
 import { PluginImpl } from 'rollup'
 
-export interface Options {
-    deps?:     boolean
-    devDeps?:  boolean
-    peerDeps?: boolean
-    optDeps?:  boolean
-    except?:   string | RegExp | (string | RegExp)[]
-}
+import { ExternalOptions } from '../'
+const externals: PluginImpl<ExternalOptions> = (options = {}) => {
 
-const externals: PluginImpl<Options> = (options = {}) => {
-
-    const opts: Options = Object.assign({
+    const opts: ExternalOptions = Object.assign({
         deps:     true,
         devDeps:  true,
         peerDeps: true,
@@ -67,6 +60,9 @@ const externals: PluginImpl<Options> = (options = {}) => {
             }
             else if (typeof config.external === 'undefined') {
                 config.external = externals
+            }
+            else {
+                warnings.push(`Unknown 'external' entry type in Rollup config, node-externals is disabling itself as to not overwrite the config.`)
             }
         },
 
