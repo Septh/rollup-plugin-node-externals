@@ -1,45 +1,48 @@
 {
     "name": "rollup-plugin-node-externals",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "description": "Automatically declare NodeJS built-in modules and npm dependencies as 'external' in Rollup config",
-    "main": "dist/externals.cjs.js",
-    "module": "dist/externals.esm.js",
-    "typings": "index.d.ts",
+    "author": "Stephan Schreiber <septh@sfr.fr>",
+    "license": "MIT",
+    "keywords": [
+        "rollup",
+        "rollup-plugin",
+        "node",
+        "npm",
+        "modules",
+        "bundle",
+        "external",
+        "dependencies",
+        "package.json"
+    ],
     "repository": {
         "type": "git",
         "url": "https://github.com/Septh/rollup-plugin-node-externals"
     },
     "homepage": "https://github.com/Septh/rollup-plugin-node-externals",
-    "scripts": {
-        "prebuild": "trash dist",
-        "build": "rollup -c",
-        "watch": "rollup -cw"
-    },
+    "main": "dist/externals.cjs.js",
+    "module": "dist/externals.ejs.js",
+    "types": "index.d.ts",
     "files": [
         "dist/*.js",
         "index.d.ts",
         "README.md"
     ],
-    "keywords": [
-        "rollup",
-        "rollup-plugin",
-        "npm",
-        "node",
-        "modules",
-        "external"
-    ],
-    "author": "Stephan Schreiber <septh@sfr.fr>",
-    "license": "MIT",
-    "dependencies": {
-        "builtin-modules": "^3.0.0"
+    "scripts": {
+        "build": "rollup -c",
+        "watch": "rollup -cw",
+        "dist": "rollup -c --environment BUILD:dist",
+        "types": "tsc src/index.ts --declaration --emitDeclarationOnly --outDir .",
+        "clean": "trash dist"
     },
     "devDependencies": {
+        "@wessberg/rollup-plugin-ts": "^1.1.54",
+        "builtin-modules": "^3.1.0",
         "rollup": "^1.1.2",
-        "rollup-plugin-commonjs": "^9.2.0",
-        "rollup-plugin-node-resolve": "^4.0.0",
-        "rollup-plugin-typescript2": "^0.19.2",
-        "trash": "^4.3.0",
-        "typescript": "^3.2.4",
-        "typescript-tslint-plugin": "^0.3.0"
+        "trash": "^6.0.0",
+        "tslib": "^1.9.3",
+        "tslint": "^5.16.0",
+        "typescript": "^3.5.1",
+        "typescript-tslint-plugin": "^0.4.0"
     }
 }

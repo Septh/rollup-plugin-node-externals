@@ -1,22 +1,28 @@
 
-import commonjs from 'rollup-plugin-commonjs'
-import resolve from 'rollup-plugin-node-resolve'
-import typescript from 'rollup-plugin-typescript2'
+import pkg from './package.json'
+import ts from '@wessberg/rollup-plugin-ts'
+import builtinModules from 'builtin-modules'
 
-const IS_WATCHING = process.env.ROLLUP_WATCH === 'true'
+const input = 'src/index.ts'
+const sourcemap = process.env.BUILD !== 'dist'
+const external = [
+    ...builtinModules,
+    'builtin-modules'
+]
 
-export default {
-    input: 'src/externals.ts',
-    output: [
-        { file: 'dist/externals.cjs.js', format: 'cjs', sourcemap: IS_WATCHING },
-        { file: 'dist/externals.esm.js', format: 'es',  sourcemap: IS_WATCHING }
-    ],
+export default [{
+    input,
+    output: { file: pkg.main, format: 'cjs', sourcemap },
     plugins: [
-        resolve(),
-        commonjs(),
-        typescript()
+        ts()
     ],
-    external: [
-        'path'
-    ]
-}
+    external
+},
+{
+    input,
+    output: { file: pkg.module, format: 'es', sourcemap },
+    plugins: [
+        ts()
+    ],
+    external
+}]

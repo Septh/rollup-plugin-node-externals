@@ -1,23 +1,30 @@
 {
     "compilerOptions": {
-        // Code generation
-		"target": "es2015",
-        "module": "esnext",
-        "moduleResolution": "node",
+        // Plugins
         "plugins": [
-            { "name": "typescript-tslint-plugin" }
-        ],
-        "sourceMap": true,
-        "removeComments": true,
-        "lib": [
-            "es2017",
+            {
+                "name": "typescript-tslint-plugin"
+            }
         ],
 
-        "esModuleInterop": true, // Enables the following:
-        // "allowSyntheticDefaultImports": true,
+        // Input
+        "checkJs": false,
+        "allowJs": false,
+        "moduleResolution": "node",     // overriden by rollup-plugin-ts
+        "allowSyntheticDefaultImports": false,
+        "esModuleInterop": false,
+        "lib": [ "es2017" ],
+
+        // Output
+        "outDir": "dist",               // overriden by rollup-plugin-ts
+        "target": "es2015",
+        "module": "esnext",
+        "alwaysStrict": true,
+        "removeComments": true,
+        "sourceMap": false,             // overriden by rollup-plugin-ts
+        "declaration": false,
 
         // Type checkings
-        "checkJs": false,
         "strict": true, // Enables the following:
             // "noImplicitAny": true,
             // "noImplicitThis": true,
@@ -28,6 +35,13 @@
             // "strictPropertyInitialization": true,
 		"noImplicitReturns": true,
 		"noUnusedLocals": true,
-        "noUnusedParameters": true
-    }
+        "noUnusedParameters": true,
+
+        // Experimental
+        // "experimentalDecorators": false,
+        // "emitDecoratorMetadata": false
+    },
+    "files": [
+        "src/index.ts"
+    ]
 }

@@ -1,6 +1,3 @@
 {
-    "cSpell.ignoreWords": [
-        "prebuild",
-        "sourcemap"
-    ]
+    "typescript.tsdk": "node_modules\\typescript\\lib"
 }
