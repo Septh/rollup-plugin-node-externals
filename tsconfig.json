@@ -2,27 +2,27 @@
     "compilerOptions": {
         // Plugins
         "plugins": [
-            {
-                "name": "typescript-tslint-plugin"
-            }
+            { "name": "typescript-tslint-plugin" }
         ],
 
         // Input
         "checkJs": false,
         "allowJs": false,
-        "moduleResolution": "node",     // overriden by rollup-plugin-ts
+        "moduleResolution": "node",
         "allowSyntheticDefaultImports": false,
         "esModuleInterop": false,
-        "lib": [ "es2017" ],
+        "lib": [ "es2018" ],
 
         // Output
-        "outDir": "dist",               // overriden by rollup-plugin-ts
         "target": "es2015",
-        "module": "esnext",
+        "importHelpers": true,
+        "noEmitHelpers": false,
         "alwaysStrict": true,
         "removeComments": true,
-        "sourceMap": false,             // overriden by rollup-plugin-ts
         "declaration": false,
+        // "module": "esnext",             // overriden by rollup-plugin-ts
+        // "outDir": "out",                // overriden by rollup-plugin-ts
+        // "sourceMap": true,              // overriden by rollup-plugin-ts
 
         // Type checkings
         "strict": true, // Enables the following:

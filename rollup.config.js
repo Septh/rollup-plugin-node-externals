@@ -1,28 +1,34 @@
 
-import pkg from './package.json'
 import ts from '@wessberg/rollup-plugin-ts'
-import builtinModules from 'builtin-modules'
+import builtins from 'builtin-modules'
 
+import pkg from './package.json'
 const input = 'src/index.ts'
-const sourcemap = process.env.BUILD !== 'dist'
-const external = [
-    ...builtinModules,
-    'builtin-modules'
-]
+const sourcemap = true
+const external = builtins.concat(Object.keys(pkg.devDependencies))
+const tsOptions = {
+    // tsconfig: {
+    // }
+}
 
-export default [{
+const cfg = {
     input,
-    output: { file: pkg.main, format: 'cjs', sourcemap },
+    output: [
+        {
+            format: 'cjs',
+            file: pkg.main,
+            sourcemap
+        },
+        {
+            format: 'es',
+            file: pkg.module,
+            sourcemap
+        },
+    ],
     plugins: [
-        ts()
+        ts(tsOptions)
     ],
     external
-},
-{
-    input,
-    output: { file: pkg.module, format: 'es', sourcemap },
-    plugins: [
-        ts()
-    ],
-    external
-}]
+}
+
+export default cfg

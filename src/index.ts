@@ -5,89 +5,110 @@
  * Useful when bundling a NodeJS or an Electron app and you don't want to bundle
  * node/npm modules with your own code but rather require() them at runtime.
  */
-
-/// <reference types="node" />
 import { resolve } from 'path'
-import { Plugin } from 'rollup'
+import { Plugin, ResolveIdResult } from 'rollup'
 import * as builtinModules from 'builtin-modules'
 
 export interface ExternalsOptions {
-    deps?: boolean
-    devDeps?: boolean
-    peerDeps?: boolean
-    optDeps?: boolean
-    except?: string | RegExp | (string | RegExp)[]
+    builtins: boolean
+    deps: boolean
+    devDeps: boolean
+    peerDeps: boolean
+    optDeps: boolean
+    include: string | RegExp | (string | RegExp)[]
+    exclude: string | RegExp | (string | RegExp)[]
+    /** @deprecated. Use include/exclude instead. */
+    except: string | RegExp | (string | RegExp)[]
 }
 
 /** For backward compatibility. Use `ExternalsOptions` instead. */
 export type ExternalOptions = ExternalsOptions
 
 // The plugin implementation
-const emptyObject = Object.create(null)
-export default function externals(options: ExternalsOptions = {}): Plugin {
-
-    const opts: ExternalsOptions = Object.assign({
-        deps: true,
-        devDeps: true,
-        peerDeps: true,
-        optDeps: true,
-        except: []
-    }, options)
-
-    const pkg = require(resolve(process.cwd(), 'package.json'))
-
-    const externals: string[] = [
-        // Node built-in modules are always external
-        ...builtinModules,
-
-        // Conditionally add dependencies, devDependencies, peerDependencies and optionalDependencies
-        ...(opts.deps     ? Object.keys(pkg.dependencies         || emptyObject) : []),
-        ...(opts.devDeps  ? Object.keys(pkg.devDependencies      || emptyObject) : []),
-        ...(opts.peerDeps ? Object.keys(pkg.peerDependencies     || emptyObject) : []),
-        ...(opts.optDeps  ? Object.keys(pkg.optionalDependencies || emptyObject) : [])
-    ]
+function externals(options: Partial<ExternalsOptions> = {}): Plugin {
 
     // Store eventual warnings until we can display them
     const warnings: string[] = []
 
+    // Consolidate options
+    const opts: ExternalsOptions = {
+        builtins: true,
+        deps: false,
+        devDeps: true,
+        peerDeps: true,
+        optDeps: true,
+        include: [],
+        exclude: [],
+        except: [],
+        ...options
+    }
+
+    // Map the include and exclude options to arrays of regexes
+    const [ include, exclude, except ] = [ 'include', 'exclude', 'except' ].map(option => new Array()
+        .concat((opts as any)[option])
+        .map((entry: string | RegExp, index: number): RegExp => {
+            if (entry instanceof RegExp) {
+                return entry
+            }
+            else if (typeof entry === 'string') {
+                return new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$')
+            }
+            else {
+                warnings.push(`Ignoring wrong entry type #${index} in '${option}' option: '${entry}'`)
+                return /(?=no)match/
+            }
+        })
+    )
+
+    if (except.length > 0) {
+        warnings.push("'except' option is deprecated, please use include/exclude instead")
+        exclude.push(...except)
+    }
+
+    // Build a function to filter out unwanted dependencies
+    const f: (dep: string) => boolean = dep => !exclude.some(rx => rx.test(dep))
+
+    // Filter NodeJS builtins
+    const builtins = (opts.builtins ? builtinModules : []).filter(f)
+
+    // Filter deps from package.json
+    let pkg
+    try {
+        pkg = require(resolve(process.cwd(), 'package.json'))
+    }
+    catch {
+        warnings.push("could'nt read package.json, please make sure it exists in the same directory as rollup.config.js")
+        pkg = Object.create(null)
+    }
+    const dependencies: string[] = [
+        ...(opts.deps     ? Object.keys(pkg.dependencies         || {}) : []),
+        ...(opts.devDeps  ? Object.keys(pkg.devDependencies      || {}) : []),
+        ...(opts.peerDeps ? Object.keys(pkg.peerDependencies     || {}) : []),
+        ...(opts.optDeps  ? Object.keys(pkg.optionalDependencies || {}) : [])
+    ].filter(f)
+
+    // Build the final regexes
+    const externals: RegExp[] = []
+    if (builtins.length > 0) {
+        externals.push(new RegExp('^(?:' + builtins.join('|') + ')$'))
+    }
+    if (dependencies.length > 0) {
+        externals.push(new RegExp('^(?:' + dependencies.join('|') + ')$'))
+    }
+    if (include.length > 0) {
+        externals.push(...include)
+    }
+
     return {
         name: 'node-externals',
 
-        options(config) {
-
-            // Map the except option to an array of regexes
-            const except: RegExp[] = []
-                .concat(opts.except as any)
-                .map( (entry: string | RegExp, index: number) => {
-                    if (entry instanceof RegExp) {
-                        return entry
-                    }
-                    else if (typeof entry === 'string') {
-                        return new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$')
-                    }
-                    else {
-                        warnings.push(`Ignoring wrong entry type #${index} in "except" option: "${entry}"`)
-                        return /(?=cannot)match/
-                    }
-                })
-
-
-            // Filter out modules that are to be kept as internal
-            const external = externals.filter(name => !except.some(regex => regex.test(name)))
-
-            // Update the `external` option in rollup.config.js
-            if (typeof config.external === 'function') {
-                const old_fn = config.external
-                config.external = (id, parent, isResolved) => old_fn(id, parent, isResolved) || external.includes(id)
-            }
-            else if (Array.isArray(config.external)) {
-                config.external = config.external.concat(external)
-            }
-            else if (typeof config.external === 'undefined') {
-                config.external = external
-            }
-            else {
-                warnings.push(`Unknown "external" entry type in Rollup config, node-externals is disabling itself as it doesn't know how to handle a "${typeof config.external}" .`)
+        resolveId(importee, importer): ResolveIdResult {
+            // Only return something if we handled this id,
+            // otherwise we let Rollup and other plugins handle it
+            if (importer && !/\0/.test(importee)) {
+                if (externals.some(ext => ext.test(importee))) {
+                    return { id: importee, external: true }
+                }
             }
         },
 
@@ -99,3 +120,5 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
         }
     }
 }
+
+export default externals
