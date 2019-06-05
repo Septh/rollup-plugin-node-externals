@@ -7,8 +7,6 @@ const input = 'src/index.ts'
 const sourcemap = true
 const external = builtins.concat(Object.keys(pkg.devDependencies))
 const tsOptions = {
-    // tsconfig: {
-    // }
 }
 
 const cfg = {

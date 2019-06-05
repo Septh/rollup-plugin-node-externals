@@ -77,7 +77,7 @@ function externals(options: Partial<ExternalsOptions> = {}): Plugin {
         pkg = require(resolve(process.cwd(), 'package.json'))
     }
     catch {
-        warnings.push("could'nt read package.json, please make sure it exists in the same directory as rollup.config.js")
+        warnings.push("couldn't read package.json, please make sure it exists in the same directory as rollup.config.js")
         pkg = Object.create(null)
     }
     const dependencies: string[] = [
@@ -107,7 +107,8 @@ function externals(options: Partial<ExternalsOptions> = {}): Plugin {
             // otherwise we let Rollup and other plugins handle it
             if (importer && !/\0/.test(importee)) {
                 if (externals.some(ext => ext.test(importee))) {
-                    return { id: importee, external: true }
+                    // console.log('External: %O', importee)
+                    return false
                 }
             }
         },

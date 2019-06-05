@@ -15,7 +15,7 @@
 
         // Output
         "target": "es2015",
-        "importHelpers": true,
+        "importHelpers": false,
         "noEmitHelpers": false,
         "alwaysStrict": true,
         "removeComments": true,
