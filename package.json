@@ -1,6 +1,6 @@
 {
   "name": "rollup-plugin-node-externals",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Automatically declare NodeJS built-in modules and npm dependencies as 'external' in Rollup config",
   "author": "Stephan Schreiber <septh@sfr.fr>",
   "license": "MIT",
@@ -37,13 +37,13 @@
     "clean": "trash dist"
   },
   "devDependencies": {
-    "@wessberg/rollup-plugin-ts": "^1.1.54",
+    "@wessberg/rollup-plugin-ts": "^1.1.64",
     "builtin-modules": "^3.1.0",
-    "rollup": "^1.13.1",
-    "rollup-plugin-node-resolve": "^5.0.1",
+    "rollup": "^1.21.3",
+    "rollup-plugin-node-resolve": "^5.2.0",
     "trash": "^6.0.0",
-    "tslint": "^5.17.0",
-    "typescript": "^3.5.1",
-    "typescript-tslint-plugin": "^0.4.0"
+    "tslint": "^5.20.0",
+    "typescript": "^3.6.3",
+    "typescript-tslint-plugin": "^0.5.4"
   }
 }

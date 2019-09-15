@@ -6,7 +6,7 @@
  * node/npm modules with your own code but rather require() them at runtime.
  */
 import { resolve } from 'path'
-import { Plugin, ResolveIdResult } from 'rollup'
+import { Plugin } from 'rollup'
 import * as builtinModules from 'builtin-modules'
 
 export interface ExternalsOptions {
@@ -102,15 +102,10 @@ function externals(options: Partial<ExternalsOptions> = {}): Plugin {
     return {
         name: 'node-externals',
 
-        resolveId(importee, importer): ResolveIdResult {
-            // Only return something if we handled this id,
-            // otherwise we let Rollup and other plugins handle it
-            if (importer && !/\0/.test(importee)) {
-                if (externals.some(ext => ext.test(importee))) {
-                    // console.log('External: %O', importee)
-                    return false
-                }
-            }
+        resolveId(importee, importer) {
+            // Return `false` if importee should be treated as an external module,
+            // otherwise return `null` to let Rollup and other plugins handle it.
+            return importer && !/\0/.test(importee) && externals.some(deps => deps.test(importee)) ? false : null
         },
 
         buildStart() {
