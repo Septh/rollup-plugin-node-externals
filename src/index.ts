@@ -10,6 +10,7 @@ import { Plugin } from 'rollup'
 import * as builtinModules from 'builtin-modules'
 
 export interface ExternalsOptions {
+    packagePath: string
     builtins: boolean
     deps: boolean
     devDeps: boolean
@@ -32,6 +33,7 @@ function externals(options: Partial<ExternalsOptions> = {}): Plugin {
 
     // Consolidate options
     const opts: ExternalsOptions = {
+        packagePath: resolve(process.cwd(), 'package.json'),
         builtins: true,
         deps: false,
         devDeps: true,
@@ -74,7 +76,7 @@ function externals(options: Partial<ExternalsOptions> = {}): Plugin {
     // Filter deps from package.json
     let pkg
     try {
-        pkg = require(resolve(process.cwd(), 'package.json'))
+        pkg = require(opts.packagePath)
     }
     catch {
         warnings.push("couldn't read package.json, please make sure it exists in the same directory as rollup.config.js")
@@ -87,14 +89,14 @@ function externals(options: Partial<ExternalsOptions> = {}): Plugin {
         ...(opts.optDeps  ? Object.keys(pkg.optionalDependencies || {}) : [])
     ].filter(f)
 
-    // Build the final regexes
+    // Build the final regexes, include potential import from a sub directory (e.g. 'lodash/map')
     const externals: RegExp[] = []
     if (builtins.length > 0) {
-        externals.push(new RegExp('^(?:' + builtins.join('|') + ')$'))
+        externals.push(new RegExp('^(?:' + builtins.join('|') + ')(\/.+)?$'))
     }
     if (dependencies.length > 0) {
-        externals.push(new RegExp('^(?:' + dependencies.join('|') + ')$'))
-    }
+        externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(\/.+)?$'))
+   }
     if (include.length > 0) {
         externals.push(...include)
     }
