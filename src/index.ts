@@ -79,7 +79,7 @@ function externals(options: Partial<ExternalsOptions> = {}): Plugin {
         pkg = require(opts.packagePath)
     }
     catch {
-        warnings.push("couldn't read package.json, please make sure it exists in the same directory as rollup.config.js")
+        warnings.push("couldn't read package.json, please make sure it exists in the same directory as rollup.config.js or use the 'packagePath' option")
         pkg = Object.create(null)
     }
     const dependencies: string[] = [
