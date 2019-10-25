@@ -1,6 +1,6 @@
 {
   "name": "rollup-plugin-node-externals",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Automatically declare NodeJS built-in modules and npm dependencies as 'external' in Rollup config",
   "author": "Stephan Schreiber <septh@sfr.fr>",
   "license": "MIT",
