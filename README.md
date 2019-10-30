@@ -8,7 +8,7 @@ By default, Rollup doesn't know a thing about NodeJS, so using simple things lik
 
 However, this must be done for each and every NodeJS built-in modules: `path`, `os`, `fs`, etc., which can quicky become cumbersome when done manually. So the primary goal of this plugin is simply to automatically declare all NodeJS built-in modules as `external`.
 
-This plugin will also allow you, should you need it, to declare your dependencies (as defined in your `package.json` file) as `external`.
+This plugin will also allow you, should you need it, to declare your dependencies (as declared in your `package.json` file) as `external` so they are not bundled in but will be required or imported at runtime.
 
 
 ## Install
@@ -23,19 +23,21 @@ npm install --save-dev rollup-plugin-node-externals
 ```js
 import externals from 'rollup-plugin-node-externals'
 
+const packagePath = 'path/to/package.json'  // Optional, useful in monorepos
+
 export default {
   // ...
   plugins: [
     externals({
-        packagePath: myPath // The path to your package.json (default: process.cwd())
-        builtins: true,     // make node builtins external (default: true)
-        deps: true,         // make pkg.dependencies external (default: false)
-        devDeps: true,      // make pkg.devDependencies external (default: true)
-        peerDeps: true,     // make pkg.peerDependencies external (default: true)
-        optDeps: true,      // make pkg.optionalDependencies external (default: true)
-        exclude: [],        // deps to exclude from externals (default: [])
-        include: [],        // deps to include in externals (default: [])
-        except: []          // deprecated -- see below
+        packagePath,      // The path to your package.json (default: process.cwd() which is usally the same dir where rollup.config.js stands)
+        builtins: true,   // make node builtins external (default: true)
+        deps: true,       // make pkg.dependencies external (default: false)
+        devDeps: true,    // make pkg.devDependencies external (default: true)
+        peerDeps: true,   // make pkg.peerDependencies external (default: true)
+        optDeps: true,    // make pkg.optionalDependencies external (default: true)
+        exclude: [],      // deps to exclude from externals (default: [])
+        include: [],      // deps to include in externals (default: [])
+        except: []        // deprecated -- see below
     })
   ]
 }
