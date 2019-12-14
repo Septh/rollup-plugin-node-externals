@@ -4,11 +4,13 @@ A Rollup plugin that automatically declares NodeJS built-in modules as `external
 
 ## Why?
 
-By default, Rollup doesn't know a thing about NodeJS, so using simple things like `require('path')` or `import * as path from 'path'` in your code generates an `Unresolved dependencies` error. The solution here is to tell Rollup that the `path` module is in fact `external`: this way, Rollup won't try to bundle the `path` module in but simply leave the `require()` or `import` statement as is.
+By default, Rollup doesn't know a thing about NodeJS, so using simple things like `import * as path from 'path'` in your code generates an `Unresolved dependencies` error. The solution here is twofold, depending on what you're building:
+* If building a *standalone app*, e.g. for the browser, you'll need to use some kind of shim like those provided by [rollup-plugin-node-builtins](https://github.com/calvinmetcalf/rollup-plugin-node-builtins).
+* If building *an npm module or lib*, you'll need to tell Rollup that the `path` module is in fact `external`: this way, Rollup won't try to bundle the module in, but simply leave the `import` statement as is (or translate it to a `require()` call if bundling for CommonJS).
 
-However, this must be done for each and every NodeJS built-in modules: `path`, `os`, `fs`, etc., which can quicky become cumbersome when done manually. So the primary goal of this plugin is simply to automatically declare all NodeJS built-in modules as `external`.
+However, this must be done for each and every NodeJS built-in: `path`, `os`, `fs`, etc., which can quicky become cumbersome when done manually. So the primary goal of this plugin is simply to automatically declare all NodeJS built-in modules as `external`.
 
-This plugin will also allow you, should you need it, to declare your dependencies (as declared in your `package.json` file) as `external` so they are not bundled in but will be required or imported at runtime.
+This plugin will also allow you, should you need it, to declare your dependencies (as declared in your `package.json` file) as `external`. This may come in handy when building an [Electron](https://electronjs.org/) app, for example.
 
 
 ## Install
@@ -95,8 +97,8 @@ externals({
 - Use the `include` option to force certain dependencies into the list of externals, for example:
 ```js
 externals({
-    peerDeps: false,          // Bundle peerDependencies in
-    include: /^lodash(\/.+)?/ // Except for Lodash (this regex accounts for the namespaced version of lodash, ie. loadash/map)
+    peerDeps: false,        // Bundle peerDependencies in
+    include: /^lodash/      // Except for Lodash
 })
 ```
 Just like `exclude`, the `include` option can be a string, a regex or an array of those.
@@ -127,7 +129,7 @@ externals({ deps: true })
 ```
 if you want the same behavior.
 - For consistency with all other Rollup plugins out there, the `except` option from 1.x is now deprecated in favor of the Rollup-friendly `exclude` option.
-`except` is still accepted for backward compatibility and works exactly the same as `exclude` but it will issue a warning if used. To suppress this warning, just replace `except` with `include`.
+`except` is still accepted for backward compatibility and works exactly the same as `exclude` but it will issue a warning if used. To suppress this warning, just replace `except` with `exclude`.
 
 
 ## Licence
