@@ -10,7 +10,7 @@ const tsOptions = {
 }
 
 /** @type {import('rollup').RollupOptions} */
-const cfg = {
+export default {
     input,
     output: [
         {
@@ -29,5 +29,3 @@ const cfg = {
     ],
     external
 }
-
-export default cfg

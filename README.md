@@ -4,7 +4,7 @@ A Rollup plugin that automatically declares NodeJS built-in modules as `external
 
 ## Why?
 
-By default, Rollup doesn't know a thing about NodeJS, so using simple things like `import * as path from 'path'` in your code generates an `Unresolved dependencies` error. The solution here is twofold, depending on what you're building:
+By default, Rollup doesn't know a thing about NodeJS, so trying to bundle simple things like `import * as path from 'path'` in your code generates an `Unresolved dependencies` error. The solution here is twofold, depending on what you're building:
 * If building a *standalone app*, e.g. for the browser, you'll need to use some kind of shim like those provided by [rollup-plugin-node-builtins](https://github.com/calvinmetcalf/rollup-plugin-node-builtins).
 * If building *an npm module or lib*, you'll need to tell Rollup that the `path` module is in fact `external`: this way, Rollup won't try to bundle the module in and rather leave the `import` statement as is (or translate it to a `require()` call if bundling for CommonJS).
 
@@ -94,9 +94,9 @@ export default {
 
 ### Options
 
-By default, the plugin will mark all Node built-in modules and _all_ your `dev-`, `peer-` and `optionalDependencies` as external. Normal `dependencies` are left unmarked so Rollup will still bundle them within your code as expected in most situations.
+By default, the plugin will mark all Node built-in modules and _all_ your `dev-`, `peer-` and `optionalDependencies` as external. Normal `dependencies` are left unmarked so Rollup will still bundle them with your code as expected in most situations.
 
-- Set the `deps`, `devDeps`, `peerDeps` and/or `optDeps` options to `false` to prevent the corresponding dependencies from being externalized, therefore letting Rollup bundle them within your code. Set them to `true` for Rollup to treat the corresponding dependencies as external.
+- Set the `deps`, `devDeps`, `peerDeps` and/or `optDeps` options to `false` to prevent the corresponding dependencies from being externalized, therefore letting Rollup bundle them with your code. Set them to `true` for Rollup to treat the corresponding dependencies as external.
 
 - Use the `exclude` option to remove certain dependencies from the list of externals. `exclude` can be a string, a regex, or an array of those, for example:
 ```js
@@ -128,7 +128,7 @@ and you don't want `mylib` bundled in, then write:
 ```js
 // in rollup.config.js:
 externals({
-    include: '@/mylib'            // or include: /^@\//
+    include: '@/mylib'            // /^@\// or /mylib$/ would work too
 })
 ```
 

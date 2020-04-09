@@ -26,7 +26,7 @@ export interface ExternalsOptions {
 export type ExternalOptions = ExternalsOptions
 
 // The plugin implementation
-function externals(options: Partial<ExternalsOptions> = {}): Plugin {
+export default function externals(options: Partial<ExternalsOptions> = {}): Plugin {
 
     // Store eventual warnings until we can display them
     const warnings: string[] = []
@@ -104,10 +104,10 @@ function externals(options: Partial<ExternalsOptions> = {}): Plugin {
     return {
         name: 'node-externals',
 
-        resolveId(importee, importer) {
+        resolveId(source, importer) {
             // Return `false` if importee should be treated as an external module,
             // otherwise return `null` to let Rollup and other plugins handle it.
-            return importer && !/\0/.test(importee) && externals.some(deps => deps.test(importee)) ? false : null
+            return importer && !/\0/.test(source) && externals.some(deps => deps.test(source)) ? false : null
         },
 
         buildStart() {
@@ -118,5 +118,3 @@ function externals(options: Partial<ExternalsOptions> = {}): Plugin {
         }
     }
 }
-
-export default externals
