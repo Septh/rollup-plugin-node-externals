@@ -10,29 +10,37 @@ import { Plugin } from 'rollup'
 import * as builtinModules from 'builtin-modules'
 
 export interface ExternalsOptions {
-    packagePath: string
-    builtins: boolean
-    deps: boolean
-    devDeps: boolean
-    peerDeps: boolean
-    optDeps: boolean
-    include: string | RegExp | (string | RegExp)[]
-    exclude: string | RegExp | (string | RegExp)[]
-    /** @deprecated. Use include/exclude instead. */
-    except: string | RegExp | (string | RegExp)[]
+    /** Path/to/your/package.json file. Defaults to the one in `process.cwd()`. */
+    packagePath?: string
+    /** Mark node built-in modules like `path`, `fs`... as external. Defaults to `true`. */
+    builtins?: boolean
+    /** Mark dependencies as external. Defaults to `false`. */
+    deps?: boolean
+    /** Mark devDependencies as external. Defaults to `true`. */
+    devDeps?: boolean
+    /** Mark peerDependencies as external. Defaults to `true`. */
+    peerDeps?: boolean
+    /** Mark optionalDependencies as external. Defaults to `true`. */
+    optDeps?: boolean
+    /** Force these deps in the list of externals, regardless of other settings. Defaults to `[]`  */
+    include?: string | RegExp | (string | RegExp)[]
+    /** Exclude these deps from the list of externals, regardless of other settings. Defaults to `[]`  */
+    exclude?: string | RegExp | (string | RegExp)[]
+    /** @deprecated Use `exclude` instead. */
+    except?: string | RegExp | (string | RegExp)[]
 }
 
 /** For backward compatibility. Use `ExternalsOptions` instead. */
 export type ExternalOptions = ExternalsOptions
 
 // The plugin implementation
-export default function externals(options: Partial<ExternalsOptions> = {}): Plugin {
+export default function externals(options: ExternalsOptions = {}): Plugin {
 
     // Store eventual warnings until we can display them
     const warnings: string[] = []
 
     // Consolidate options
-    const opts: ExternalsOptions = {
+    const opts: Required<ExternalsOptions> = {
         packagePath: resolve(process.cwd(), 'package.json'),
         builtins: true,
         deps: false,
@@ -56,7 +64,9 @@ export default function externals(options: Partial<ExternalsOptions> = {}): Plug
                 return new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$')
             }
             else {
-                warnings.push(`Ignoring wrong entry type #${index} in '${option}' option: '${entry}'`)
+                if (!!entry) {
+                    warnings.push(`Ignoring wrong entry type #${index} in '${option}' option: '${entry}'`)
+                }
                 return /(?=no)match/
             }
         })

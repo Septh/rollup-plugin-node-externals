@@ -118,7 +118,9 @@ externals({
 ```
 Just like `exclude`, the `include` option can be a string, a regex or an array of those.
 
-> Note: this plugin uses an exact match against your imports, so if your are using some path substitution in your code, eg.:
+> Note 1 : falsy values in `include` and `exclude` are silently ignored. This allows for conditional constructs like so: `exclude: process.env.NODE_ENV === 'production' && /mydep/`.
+
+> Note2 : this plugin uses an exact match against your imports, so if your are using some path substitution in your code, eg.:
 ```js
 // in your code:
 import something from '@/mylib'   // Say '@/' is mapped to some directory

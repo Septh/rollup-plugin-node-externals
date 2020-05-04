@@ -18,7 +18,7 @@
         "importHelpers": false,
         "noEmitHelpers": false,
         "alwaysStrict": true,
-        "removeComments": true,
+        "removeComments": false,
         "declaration": false,
         // "module": "esnext",             // overriden by rollup-plugin-ts
         // "outDir": "out",                // overriden by rollup-plugin-ts

@@ -7,6 +7,7 @@ const input = 'src/index.ts'
 const sourcemap = true
 const external = builtins.concat(Object.keys(pkg.devDependencies), Object.keys(pkg.peerDependencies))
 const tsOptions = {
+    tsconfig: cfg => ({ ...cfg, removeComments: true })
 }
 
 /** @type {import('rollup').RollupOptions} */
