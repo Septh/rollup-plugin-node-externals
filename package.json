@@ -34,10 +34,18 @@
     "dist/index.d.ts",
     "README.md"
   ],
+  "ava": {
+    "extensions": ["ts"],
+    "require": [
+      "ts-node/register"
+    ]
+  },
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -cw",
     "types": "tsc src/index.ts --declaration --emitDeclarationOnly --outDir dist",
+    "test": "ava",
+    "watch-tests": "ava -w",
     "clean": "trash dist",
     "prepublishOnly": "npm run clean && npm run build && npm run types"
   },
