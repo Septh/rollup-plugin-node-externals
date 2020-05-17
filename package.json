@@ -51,6 +51,9 @@
     "clean": "trash dist",
     "prepublishOnly": "npm run clean && npm run build && npm run types"
   },
+  "dependencies": {
+    "find-up": "^4.1.0"
+  },
   "peerDependencies": {
     "builtin-modules": "^3.1.0"
   },
