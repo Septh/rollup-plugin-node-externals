@@ -10,7 +10,7 @@
         "allowJs": false,
         "moduleResolution": "node",
         "allowSyntheticDefaultImports": true,
-        "esModuleInterop": false,
+        "esModuleInterop": true,
         "lib": [ "es2018" ],
 
         // Output
