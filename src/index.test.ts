@@ -1,8 +1,9 @@
 import test from 'ava'
 import { testProp, fc } from 'ava-fast-check'
 import { Arbitrary } from 'fast-check'
-import { PluginContext, Plugin } from 'rollup'
+import { PluginContext, Plugin, InputOptions } from 'rollup'
 import externals, { ExternalsOptions } from './index'
+import { join } from "path"
 
 // Returns an arbitrary for generating externals options objects
 const externalsOptionsArbitrary = (): Arbitrary<ExternalsOptions> =>
@@ -31,10 +32,30 @@ testProp(
     }
 )
 
-test('does not mark "dependencies" dependency as external by default', t => {
+test('does not mark "dependencies" dependency as external by default', async t => {
     const source = 'example'
     const importer = 'me'
-    const plugin = externals({ packagePath: './fixtures/test.json' }) as Plugin & PluginContext
+    const plugin = externals({ packagePath: './fixtures/test.json' }) as Required<Plugin> & PluginContext
 
+    await plugin.buildStart({} as InputOptions)
     t.is(plugin.resolveId(source, importer), null)
+})
+
+const path = (...paths: string[]): string => join(__dirname, ...paths)
+
+test.serial('monorepo usage', async t => {
+    const cwd = path('fixtures/monorepo/packages/package')
+    process.chdir(cwd)
+
+    const importer = 'me'
+    const plugin = externals() as Required<Plugin> & PluginContext
+    await plugin.buildStart({} as InputOptions)
+
+    for (const source of ['@babel/core', 'typescript', 'rollup']) {
+        t.false(plugin.resolveId(source, importer))
+    }
+
+    for (const source of ['lodash', 'express', 'chalk']) {
+        t.is(plugin.resolveId(source, importer), null)
+    }
 })

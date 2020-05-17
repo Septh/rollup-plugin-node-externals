@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "lodash": "^4.17.15",
+    "chalk": "^4.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^3.9.2",
+    "rollup": "^2.10.2"
+  }
+}
