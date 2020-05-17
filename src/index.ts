@@ -7,7 +7,7 @@
  */
 import { resolve } from 'path'
 import { Plugin } from 'rollup'
-import * as builtinModules from 'builtin-modules'
+import builtinModules from 'builtin-modules'
 
 export interface ExternalsOptions {
     /** Path/to/your/package.json file. Defaults to the one in `process.cwd()`. */

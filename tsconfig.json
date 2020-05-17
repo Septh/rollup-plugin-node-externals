@@ -9,7 +9,7 @@
         "checkJs": false,
         "allowJs": false,
         "moduleResolution": "node",
-        "allowSyntheticDefaultImports": false,
+        "allowSyntheticDefaultImports": true,
         "esModuleInterop": false,
         "lib": [ "es2018" ],
 
