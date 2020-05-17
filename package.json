@@ -45,7 +45,7 @@
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -cw",
-    "types": "tsc src/index.ts --declaration --emitDeclarationOnly --outDir dist",
+    "types": "tsc src/index.ts --downlevelIteration --declaration --emitDeclarationOnly --outDir dist",
     "test": "ava",
     "watch-tests": "ava -w",
     "clean": "trash dist",
