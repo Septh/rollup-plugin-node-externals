@@ -103,10 +103,6 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
         },
 
         async buildStart() {
-            let msg: string | undefined
-            while (msg = warnings.shift()) {
-                this.warn(msg)
-            }
 
             // Find and filter dependencies
             const dependencies = (await findDependencies({
@@ -119,6 +115,12 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
                 ].filter(Boolean) as string[],
                 warnings
             })).filter(f)
+
+            // Issue the warnings we may have collected
+            let msg: string | undefined
+            while (msg = warnings.shift()) {
+                this.warn(msg)
+            }
 
             // Build regexes
             if (builtins.length > 0) {

@@ -3,6 +3,10 @@
   "version": "2.1.6",
   "description": "Automatically declare NodeJS built-in modules and npm dependencies as 'external' in Rollup config",
   "author": "Stephan Schreiber <septh@sfr.fr>",
+  "contributors": [
+    "Tomer Aberbach <tomeraberbach@gmail.com>",
+    "Elad Ossadon <eossadon@lyft.com>"
+  ],
   "license": "MIT",
   "keywords": [
     "rollup",
@@ -15,7 +19,8 @@
     "bundle",
     "external",
     "dependencies",
-    "package.json"
+    "package.json",
+    "monorepo"
   ],
   "engines": {
     "node": ">=8.0.0"
@@ -45,7 +50,7 @@
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -cw",
-    "types": "tsc src/index.ts --downlevelIteration --declaration --emitDeclarationOnly --outDir dist",
+    "types": "tsc src/index.ts --downlevelIteration --declaration --emitDeclarationOnly --esModuleInterop --outDir dist",
     "test": "ava",
     "watch-tests": "ava -w",
     "clean": "trash dist",
