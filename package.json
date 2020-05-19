@@ -45,11 +45,14 @@
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -cw",
-    "types": "tsc src/index.ts --declaration --emitDeclarationOnly --outDir dist",
+    "types": "tsc src/index.ts --downlevelIteration --declaration --emitDeclarationOnly --outDir dist",
     "test": "ava",
     "watch-tests": "ava -w",
     "clean": "trash dist",
     "prepublishOnly": "npm run clean && npm run build && npm run types"
+  },
+  "dependencies": {
+    "find-up": "^4.1.0"
   },
   "peerDependencies": {
     "builtin-modules": "^3.1.0"

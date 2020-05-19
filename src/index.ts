@@ -5,13 +5,17 @@
  * Useful when bundling a NodeJS or an Electron app and you don't want to bundle
  * node/npm modules with your own code but rather require() them at runtime.
  */
-import { resolve } from 'path'
 import { Plugin } from 'rollup'
-import * as builtinModules from 'builtin-modules'
+import builtinModules from 'builtin-modules'
+import { findPackagePaths, findDependencies } from './dependencies'
 
 export interface ExternalsOptions {
-    /** Path/to/your/package.json file. Defaults to the one in `process.cwd()`. */
-    packagePath?: string
+    /**
+     * Path/to/your/package.json file (or array of paths).
+     * Defaults to all package.json files found in parent directories recursively.
+     * Won't got outside of a git repository.
+     */
+    packagePath?: string | string[]
     /** Mark node built-in modules like `path`, `fs`... as external. Defaults to `true`. */
     builtins?: boolean
     /** Mark dependencies as external. Defaults to `false`. */
@@ -41,7 +45,7 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
 
     // Consolidate options
     const opts: Required<ExternalsOptions> = {
-        packagePath: resolve(process.cwd(), 'package.json'),
+        packagePath: [],
         builtins: true,
         deps: false,
         devDeps: true,
@@ -83,33 +87,11 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
     // Filter NodeJS builtins
     const builtins = (opts.builtins ? builtinModules : []).filter(f)
 
-    // Filter deps from package.json
-    let pkg
-    try {
-        pkg = require(opts.packagePath)
-    }
-    catch {
-        warnings.push("couldn't read package.json, please make sure it exists in the same directory as rollup.config.js or use the 'packagePath' option.")
-        pkg = Object.create(null)
-    }
-    const dependencies: string[] = [
-        ...(opts.deps     ? Object.keys(pkg.dependencies         || {}) : []),
-        ...(opts.devDeps  ? Object.keys(pkg.devDependencies      || {}) : []),
-        ...(opts.peerDeps ? Object.keys(pkg.peerDependencies     || {}) : []),
-        ...(opts.optDeps  ? Object.keys(pkg.optionalDependencies || {}) : [])
-    ].filter(f)
+    // Normalize package paths
+    let packagePaths: string[] = ([] as string[]).concat(opts.packagePath)
 
-    // Build the final regexes, include potential import from a sub directory (e.g. 'lodash/map')
+    // Array of the final regexes, include potential import from a sub directory (e.g. 'lodash/map')
     const externals: RegExp[] = []
-    if (builtins.length > 0) {
-        externals.push(new RegExp('^(?:' + builtins.join('|') + ')(\/.+)?$'))
-    }
-    if (dependencies.length > 0) {
-        externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(\/.+)?$'))
-   }
-    if (include.length > 0) {
-        externals.push(...include)
-    }
 
     return {
         name: 'node-externals',
@@ -120,10 +102,33 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
             return importer && !/\0/.test(source) && externals.some(deps => deps.test(source)) ? false : null
         },
 
-        buildStart() {
+        async buildStart() {
             let msg: string | undefined
             while (msg = warnings.shift()) {
                 this.warn(msg)
+            }
+
+            // Find and filter dependencies
+            const dependencies = (await findDependencies({
+                packagePaths: packagePaths.length > 0 ? packagePaths : findPackagePaths(),
+                keys: [
+                    opts.deps && 'dependencies',
+                    opts.devDeps && 'devDependencies',
+                    opts.peerDeps && 'peerDependencies',
+                    opts.optDeps && 'optionalDependencies'
+                ].filter(Boolean) as string[],
+                warnings
+            })).filter(f)
+
+            // Build regexes
+            if (builtins.length > 0) {
+                externals.push(new RegExp('^(?:' + builtins.join('|') + ')(\/.+)?$'))
+            }
+            if (dependencies.length > 0) {
+                externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(\/.+)?$'))
+            }
+            if (include.length > 0) {
+                externals.push(...include)
             }
         }
     }
