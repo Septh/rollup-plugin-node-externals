@@ -1,28 +1,25 @@
 # rollup-plugin-node-externals
-
 A Rollup plugin that automatically declares NodeJS built-in modules as `external`. Can also handle npm dependencies, devDependencies, peerDependencies and optionalDependencies. Works in monorepos too!
 
 ## Why?
+By default, Rollup doesn't know a thing about NodeJS, so trying to bundle simple things like `import * as path from 'path'` in your code generates an `Unresolved dependencies` warning.
 
-By default, Rollup doesn't know a thing about NodeJS, so trying to bundle simple things like `import * as path from 'path'` in your code generates an `Unresolved dependencies` error. The solution here is twofold:
-* Either use some kind of shim like those provided by [rollup-plugin-node-builtins](https://github.com/calvinmetcalf/rollup-plugin-node-builtins).
-* Or tell Rollup that the `path` module is in fact `external`: this way, Rollup won't try to bundle it in and rather leave the `import` statement as is (or translate it to a `require()` call if bundling for CommonJS).
+The solution here is quite simple: you must tell Rollup that the `path` module is in fact `external`. This way, Rollup won't try to bundle it in and rather leave the `import` statement as is (or translate it to a `require()` call if bundling for CommonJS).
 
-However, this must be done for each and every NodeJS built-in: `path`, `os`, `fs`, etc., which can quicky become cumbersome when done manually. So the primary goal of this plugin is simply to automatically declare all NodeJS built-in modules as `external`.
-> Note: the list of builtins is obtained via [the builtin-modules package](https://github.com/sindresorhus/builtin-modules) by Sindre Sorhus and should be up-to-date with your current NodeJS version.
+However, this must be done for each and every NodeJS built-in that you happen to use in your program: `path`, `os`, `fs`, `url`, etc., which can quicky become cumbersome when done manually.
 
-This plugin will also allow you to declare your dependencies (as declared in your `package.json` file) as `external`. This may come in handy when building an [Electron](https://electronjs.org) app, for example.
+So the primary goal of this plugin is simply to automatically declare all NodeJS built-in modules as `external`.
+
+This plugin will also allow you to declare your dependencies (as declared in your `package.json` file) as `external`.
 
 
 ## Install
-
 ```sh
 npm install --save-dev rollup-plugin-node-externals
 ```
 
 
 ## Usage
-
 ```js
 import externals from 'rollup-plugin-node-externals'
 
@@ -50,14 +47,11 @@ export default {
       // Make pkg.devDependencies external. Optional. Default: true
       devDeps: true,
 
-      // Modules to exclude from externals. Optional. Default: none
+      // Modules to exclude from externals. Optional. Default: []
       exclude: [],
 
-      // Modules to include in externals. Optional. Default: all
-      include: [],
-
-      // Deprecated -- see below
-      except: []
+      // Modules to include in externals. Optional. Default: []
+      include: []
     })
   ]
 }
@@ -75,46 +69,28 @@ export default {
 }
 ```
 
-> Note: if you're also using `@rollup/plugin-node-resolve`, make sure this plugin comes before it in the `plugins` array:
-```js
-import externals from 'rollup-plugin-node-externals'
-import resolve from '@rollup/plugin-node-resolve'
-// ...
-
-export default {
-  // ...
-  plugins: [
-    externals(),
-    resolve(),
-    // other plugins
-  ]
-}
-```
-
-
 ### Options
-
 By default, the plugin will mark all Node builtin modules and _all_ your `dev-`, `peer-` and `optionalDependencies` as external. Normal `dependencies` are left unmarked so Rollup will still bundle them with your code as expected in most situations.
 
-- **packagePath?: string | string[] = []**
+#### packagePath?: string | string[] = []
 
 If you're working with monorepos, the `packagePath` is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all package.json files in parent directories recursively until either the root git directory is reached or until no other package.json can be found.
 
-- **builtins?: boolean = true**
-- **deps?: boolean = false**
-- **devDeps?: boolean = true**
-- **peerDeps?: boolean = true**
-- **optDeps?: boolean = true**
+#### builtins?: boolean = true
+#### deps?: boolean = false
+#### devDeps?: boolean = true
+#### peerDeps?: boolean = true
+#### optDeps?: boolean = true
 
 Set the `builtins`, `deps`, `devDeps`, `peerDeps` and/or `optDeps` options to `false` to prevent the corresponding dependencies from being externalized, therefore letting Rollup bundle them with your code. Set them to `true` for Rollup to treat the corresponding dependencies as external.
 
-- **include?: string | RegExp | (string | RegExp)[] = []**
-- **exclude?: string | RegExp | (string | RegExp)[] = []**
+#### include?: string | RegExp | (string | RegExp)[] = []
+#### exclude?: string | RegExp | (string | RegExp)[] = []
 
 Use the `exclude` option to remove certain dependencies from the list of externals, for example:
 ```js
 externals({
-  deps: true,           // Don't bundle dependencies, we'll require() them at runtime instead
+  deps: true,           // Don't bundle dependencies, we'll import/require them at runtime instead
   exclude: [
     'electron-reload',  // Yet we want `electron-reload` bundled in
     /^vuex?/            // as well as the VueJS family (vue, vuex, vue-router, etc.)
@@ -125,8 +101,8 @@ externals({
 Use the `include` option to force certain dependencies into the list of externals, for example:
 ```js
 externals({
-  peerDeps: false,        // Bundle peerDependencies in
-  include: /^lodash/      // Except for Lodash
+  optDeps: false,       // Bundle optionalDependencies in
+  include: /^fsevents/  // Except for fsevents
 })
 ```
 
@@ -144,6 +120,23 @@ externals({
     include: '@/mylib'
 })
 ```
+
+> Note3: if you're also using `@rollup/plugin-node-resolve`, make sure this plugin comes before it in the `plugins` array:
+```js
+import externals from 'rollup-plugin-node-externals'
+import resolve from '@rollup/plugin-node-resolve'
+// ...
+
+export default {
+  // ...
+  plugins: [
+    externals(),
+    resolve(),
+    // other plugins
+  ]
+}
+```
+
 
 ### Migrating from version 1.x
 

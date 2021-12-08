@@ -23,12 +23,7 @@ export interface ExternalsOptions {
     include?: string | RegExp | (string | RegExp)[]
     /** Exclude these deps from the list of externals, regardless of other settings. Defaults to `[]`  */
     exclude?: string | RegExp | (string | RegExp)[]
-    /** @deprecated Use `exclude` instead. */
-    except?: string | RegExp | (string | RegExp)[]
 }
-
-/** @deprecated Use `ExternalsOptions` instead. */
-export type ExternalOptions = ExternalsOptions
 
 /**
  * A Rollup plugin that automatically declares NodeJS built-in modules
@@ -52,12 +47,11 @@ export type ExternalOptions = ExternalsOptions
         optDeps: true,
         include: [],
         exclude: [],
-        except: [],
         ...options
     }
 
     // Map the include and exclude options to arrays of regexes
-    const [ include, exclude, except ] = [ 'include', 'exclude', 'except' ].map(option => new Array()
+    const [ include, exclude ] = [ 'include', 'exclude' ].map(option => new Array()
         .concat((opts as any)[option])
         .map((entry: string | RegExp, index: number): RegExp => {
             if (entry instanceof RegExp) {
@@ -74,11 +68,6 @@ export type ExternalOptions = ExternalsOptions
             }
         })
     )
-
-    if (except.length > 0) {
-        warnings.push("'except' option is deprecated, please use include/exclude instead")
-        exclude.push(...except)
-    }
 
     // Build a function to filter out unwanted dependencies
     const filterFn: (dep: string) => boolean = dep => !exclude.some(rx => rx.test(dep))
