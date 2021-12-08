@@ -9,20 +9,20 @@
         "checkJs": false,
         "allowJs": false,
         "moduleResolution": "node",
-        "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
-        "lib": [ "es2018" ],
+        "allowSyntheticDefaultImports": true,
+        "lib": [ "es2020" ],
 
         // Output
-        "target": "es2015",
-        "importHelpers": false,
+        "target": "es2020",
+        "module": "es2020",
+        "sourceMap": false,
+        "importHelpers": true,
         "noEmitHelpers": false,
         "alwaysStrict": true,
         "removeComments": false,
-        "declaration": false,
-        // "module": "esnext",             // overriden by rollup-plugin-ts
-        // "outDir": "out",                // overriden by rollup-plugin-ts
-        // "sourceMap": true,              // overriden by rollup-plugin-ts
+        "declaration": true,
+        "declarationMap": false,
 
         // Type checkings
         "strict": true, // Enables the following:
@@ -36,10 +36,6 @@
 		"noImplicitReturns": true,
 		"noUnusedLocals": true,
         "noUnusedParameters": true,
-
-        // Experimental
-        // "experimentalDecorators": false,
-        // "emitDecoratorMetadata": false
     },
     "files": [
         "src/index.ts"

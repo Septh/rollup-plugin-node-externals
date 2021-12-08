@@ -1,12 +1,5 @@
-/**
- * A Rollup plugin that automatically declares NodeJS built-in modules
- * and npm dependencies as 'external'.
- *
- * Useful when bundling a NodeJS or an Electron app and you don't want to bundle
- * node/npm modules with your own code but rather require() them at runtime.
- */
-import { Plugin } from 'rollup'
-import builtinModules from 'builtin-modules'
+import type { Plugin } from 'rollup'
+import { builtinModules } from 'module'
 import { findPackagePaths, findDependencies } from './dependencies'
 
 export interface ExternalsOptions {
@@ -34,11 +27,17 @@ export interface ExternalsOptions {
     except?: string | RegExp | (string | RegExp)[]
 }
 
-/** For backward compatibility. Use `ExternalsOptions` instead. */
+/** @deprecated Use `ExternalsOptions` instead. */
 export type ExternalOptions = ExternalsOptions
 
-// The plugin implementation
-export default function externals(options: ExternalsOptions = {}): Plugin {
+/**
+ * A Rollup plugin that automatically declares NodeJS built-in modules
+ * and optionally npm dependencies as 'external'.
+ *
+ * Useful when you don't want to bundle node/npm modules with your own code
+ * but rather import or require them at runtime.
+ */
+ export default function externals(options: ExternalsOptions = {}): Plugin {
 
     // Store eventual warnings until we can display them
     const warnings: string[] = []
@@ -82,10 +81,10 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
     }
 
     // Build a function to filter out unwanted dependencies
-    const f: (dep: string) => boolean = dep => !exclude.some(rx => rx.test(dep))
+    const filterFn: (dep: string) => boolean = dep => !exclude.some(rx => rx.test(dep))
 
     // Filter NodeJS builtins
-    const builtins = (opts.builtins ? builtinModules : []).filter(f)
+    const builtins = (opts.builtins ? builtinModules : []).filter(filterFn)
 
     // Normalize package paths
     let packagePaths: string[] = ([] as string[]).concat(opts.packagePath)
@@ -95,12 +94,6 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
 
     return {
         name: 'node-externals',
-
-        resolveId(source, importer) {
-            // Return `false` if importee should be treated as an external module,
-            // otherwise return `null` to let Rollup and other plugins handle it.
-            return importer && !/\0/.test(source) && externals.some(deps => deps.test(source)) ? false : null
-        },
 
         async buildStart() {
 
@@ -114,7 +107,7 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
                     opts.optDeps && 'optionalDependencies'
                 ].filter(Boolean) as string[],
                 warnings
-            })).filter(f)
+            })).filter(filterFn)
 
             // Issue the warnings we may have collected
             let msg: string | undefined
@@ -126,12 +119,20 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
             if (builtins.length > 0) {
                 externals.push(new RegExp('^(?:' + builtins.join('|') + ')(\/.+)?$'))
             }
+
             if (dependencies.length > 0) {
                 externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(\/.+)?$'))
             }
+
             if (include.length > 0) {
                 externals.push(...include)
             }
+        },
+
+        resolveId(source, importer) {
+            // Return `false` if importee should be treated as an external module,
+            // otherwise return `null` to let Rollup and other plugins handle it.
+            return importer && !/\0/.test(source) && externals.some(deps => deps.test(source)) ? false : null
         }
     }
 }

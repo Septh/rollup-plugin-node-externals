@@ -1,6 +1,6 @@
 import { dirname, relative, isAbsolute } from 'path'
 import { promises as fs } from 'fs'
-import findUp from 'find-up'
+import { findUp } from 'find-up'
 
 /**
  * Determines if the `child` path is under the `parent` path.
@@ -11,6 +11,7 @@ function isInDirectory(parent: string, child: string): boolean {
 }
 
 /**
+ * @internal
  * Iterates over package.json file paths recursively found in parent directories, starting from the
  * current working directory. If the current working directory is in a git repository, then package.json
  * files outside of the git repository will not be yielded.
@@ -38,6 +39,7 @@ export async function* findPackagePaths(): AsyncGenerator<string> {
     }
 }
 
+/** @internal */
 export async function findDependencies(
     { packagePaths, keys, warnings }: {
         packagePaths: AsyncIterable<string> | Iterable<string>,
