@@ -8,22 +8,37 @@ import ts from 'rollup-plugin-ts'
 // @ts-ignore
 const pkg = createRequire(import.meta.url)('./package.json')
 
-/** @type { import('rollup').PluginImpl } */
-const nodeColon = () => {
+/**
+ * A mini-plugin that resolves `node:` imports to their unprefixed equivalent.
+ * @type { import('rollup').PluginImpl }
+ */
+function nodeColon() {
     return {
         name: 'node-colon',
 
         resolveId(id) {
             for (const scheme of [ 'node:', 'nodejs:' ]) {
                 if (id.startsWith(scheme)) {
-                    id = id.slice(scheme.length)
-                    return {
-                        id,
-                        external: external.includes(id)
-                    }
+                    return id.slice(scheme.length)
                 }
             }
-            return null
+        }
+    }
+}
+
+/**
+ * A mini-plugin that generates a package.json file next to the bundle.
+ * @type { import('rollup').PluginImpl }
+ */
+function emitModulePackageFile() {
+    return {
+        name: 'emit-module-package-file',
+        generateBundle() {
+            this.emitFile({
+                type: 'asset',
+                fileName: 'package.json',
+                source: JSON.stringify({ type: 'module' }, undefined, 2)
+            })
         }
     }
 }
@@ -35,13 +50,16 @@ const config = {
         {
             format: 'commonjs',
             file: pkg.main,
-            exports: 'default',
+            exports: 'named',
             sourcemap: false
         },
         {
             format: 'module',
             file: pkg.module,
-            sourcemap: false
+            sourcemap: false,
+            plugins: [
+                emitModulePackageFile()
+            ]
         },
     ],
     plugins: [
