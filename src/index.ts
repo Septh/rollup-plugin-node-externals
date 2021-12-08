@@ -70,7 +70,7 @@ export interface ExternalsOptions {
     )
 
     // Build a function to filter out unwanted dependencies
-    const filterFn: (dep: string) => boolean = dep => !exclude.some(rx => rx.test(dep))
+    const filterFn = (dep: string) => !exclude.some(rx => rx.test(dep))
 
     // Filter NodeJS builtins
     const builtins = (opts.builtins ? builtinModules : []).filter(filterFn)
@@ -118,10 +118,12 @@ export interface ExternalsOptions {
             }
         },
 
-        resolveId(source, importer) {
+        resolveId(id, importer) {
             // Return `false` if importee should be treated as an external module,
             // otherwise return `null` to let Rollup and other plugins handle it.
-            return importer && !/\0/.test(source) && externals.some(deps => deps.test(source)) ? false : null
+            return importer && !/\0/.test(id) && externals.some(deps => deps.test(id)) && filterFn(id)
+                ? false
+                : null
         }
     }
 }

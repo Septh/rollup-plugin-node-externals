@@ -30,18 +30,16 @@
     "url": "https://github.com/Septh/rollup-plugin-node-externals"
   },
   "homepage": "https://github.com/Septh/rollup-plugin-node-externals",
-  "type": "module",
+  "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "exports": {
-    "import": "./dist/cjs/index.js",
-    "require": "./dist/esm/index.js"
+    "require": "./dist/cjs/index.js",
+    "import": "./dist/esm/index.js"
   },
   "types": "./dist/index.d.ts",
   "files": [
-    "dist/cjs/index.js",
-    "dist/esm/index.js",
-    "dist/index.d.ts",
+    "dist",
     "README.md"
   ],
   "ava": {
@@ -55,11 +53,10 @@
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -cw",
-    "types": "tsc src/index.ts --declaration --emitDeclarationOnly --outFile dist/index.d.ts --stripInternal",
     "test": "ava",
     "watch-tests": "ava -w",
     "clean": "rimraf dist",
-    "prepublishOnly": "npm run clean && npm run build && npm run types"
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "dependencies": {
     "find-up": "^6.2.0"
