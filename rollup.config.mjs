@@ -1,6 +1,6 @@
 // @ts-check
 import { dirname } from 'path'
-import { builtinModules as external, createRequire } from 'module'
+import { builtinModules, createRequire } from 'module'
 import resolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
 import ts from 'rollup-plugin-ts'
@@ -9,13 +9,12 @@ import ts from 'rollup-plugin-ts'
 const pkg = createRequire(import.meta.url)('./package.json')
 
 /**
- * A mini-plugin that resolves `node:` imports to their unprefixed equivalent.
+ * A mini-plugin that resolves `node:` and `nodejs:` imports to their unprefixed equivalent.
  * @type { import('rollup').PluginImpl }
  */
 function nodeColon() {
     return {
         name: 'node-colon',
-
         resolveId(id) {
             for (const scheme of [ 'node:', 'nodejs:' ]) {
                 if (id.startsWith(scheme)) {
@@ -28,16 +27,16 @@ function nodeColon() {
 
 /**
  * A mini-plugin that generates a package.json file next to the bundle.
- * @type { import('rollup').PluginImpl }
+ * @type { import('rollup').PluginImpl<'module' | 'commonjs'> }
  */
-function emitModulePackageFile() {
+function emitPkg(type) {
     return {
         name: 'emit-module-package-file',
         generateBundle() {
             this.emitFile({
                 type: 'asset',
                 fileName: 'package.json',
-                source: JSON.stringify({ type: 'module' }, undefined, 2)
+                source: JSON.stringify({ type }, undefined, 2)
             })
         }
     }
@@ -51,14 +50,15 @@ const config = {
             format: 'commonjs',
             file: pkg.main,
             exports: 'named',
-            sourcemap: false
+            plugins: [
+                emitPkg('commonjs')
+            ],
         },
         {
             format: 'module',
             file: pkg.module,
-            sourcemap: false,
             plugins: [
-                emitModulePackageFile()
+                emitPkg('module')
             ]
         },
     ],
@@ -73,7 +73,7 @@ const config = {
             })
         })
     ],
-    external
+    external: builtinModules.concat(Object.keys(pkg.dependencies))
 }
 
 export default config
