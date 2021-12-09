@@ -34,11 +34,8 @@ export interface ExternalsOptions {
  */
  export default function externals(options: ExternalsOptions = {}): Plugin {
 
-    // Store eventual warnings until we can display them
-    const warnings: string[] = []
-
     // Consolidate options
-    const opts: Required<ExternalsOptions> = {
+    const consolidatedOptions: Required<ExternalsOptions> = {
         packagePath: [],
         builtins: true,
         deps: false,
@@ -50,9 +47,12 @@ export interface ExternalsOptions {
         ...options
     }
 
+    // This will store all eventual warnings until we can display them
+    const warnings: string[] = []
+
     // Map the include and exclude options to arrays of regexes
-    const [ include, exclude ] = [ 'include', 'exclude' ].map(option => new Array()
-        .concat((opts as any)[option])
+    const [ include, exclude ] = [ 'include', 'exclude' ].map(optionName => new Array()
+        .concat((consolidatedOptions as any)[optionName])
         .map((entry: string | RegExp, index: number): RegExp => {
             if (entry instanceof RegExp) {
                 return entry
@@ -62,68 +62,69 @@ export interface ExternalsOptions {
             }
             else {
                 if (!!entry) {
-                    warnings.push(`Ignoring wrong entry type #${index} in '${option}' option: '${entry}'`)
+                    warnings.push(`Ignoring wrong entry type #${index} in '${optionName}' option: '${entry}'`)
                 }
                 return /(?=no)match/
             }
         })
     )
 
-    // Build a function to filter out unwanted dependencies
-    const filterFn = (dep: string) => !exclude.some(rx => rx.test(dep))
+    // Build a function to keep only non excluded dependencies
+    const isNotExcluded = (id: string) => !exclude.some(rx => rx.test(id))
 
-    // Filter NodeJS builtins
-    const builtins = (opts.builtins ? builtinModules : []).filter(filterFn)
-
-    // Normalize package paths
-    let packagePaths: string[] = ([] as string[]).concat(opts.packagePath)
-
-    // Array of the final regexes, include potential import from a sub directory (e.g. 'lodash/map')
+    // Array of the final regexes
     const externals: RegExp[] = []
+    const isExternal = (id: string) => externals.some(deps => deps.test(id))
 
     return {
         name: 'node-externals',
 
         async buildStart() {
 
-            // Find and filter dependencies
-            const dependencies = (await findDependencies({
-                packagePaths: packagePaths.length > 0 ? packagePaths : findPackagePaths(),
-                keys: [
-                    opts.deps && 'dependencies',
-                    opts.devDeps && 'devDependencies',
-                    opts.peerDeps && 'peerDependencies',
-                    opts.optDeps && 'optionalDependencies'
-                ].filter(Boolean) as string[],
-                warnings
-            })).filter(filterFn)
-
-            // Issue the warnings we may have collected
-            let msg: string | undefined
-            while (msg = warnings.shift()) {
-                this.warn(msg)
-            }
-
-            // Build regexes
+            // 1) Filter NodeJS builtins, supporting potential import from a sub directory (e.g. 'fs/promises')
+            const builtins = (consolidatedOptions.builtins ? builtinModules : []).filter(isNotExcluded)
             if (builtins.length > 0) {
                 externals.push(new RegExp('^(?:' + builtins.join('|') + ')(\/.+)?$'))
             }
+
+            // 2) Find and filter dependencies, supporting potential import from a sub directory (e.g. 'lodash/map')
+            const packagePaths: string[] = ([] as string[]).concat(consolidatedOptions.packagePath)
+            const dependencies = (await findDependencies({
+                packagePaths: packagePaths.length > 0 ? packagePaths : findPackagePaths(),
+                keys: [
+                    consolidatedOptions.deps && 'dependencies',
+                    consolidatedOptions.devDeps && 'devDependencies',
+                    consolidatedOptions.peerDeps && 'peerDependencies',
+                    consolidatedOptions.optDeps && 'optionalDependencies'
+                ].filter(Boolean) as string[],
+                warnings
+            })).filter(isNotExcluded)
 
             if (dependencies.length > 0) {
                 externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(\/.+)?$'))
             }
 
+            // 3) Add the include option
             if (include.length > 0) {
                 externals.push(...include)
+            }
+
+            // All done. Issue the warnings we may have collected
+            let msg: string | undefined
+            while (msg = warnings.shift()) {
+                this.warn(msg)
             }
         },
 
         resolveId(id, importer) {
+            // Ignore entry chunks & don't mess with other plugins
+            if (!importer?.charCodeAt(0) || !id.charCodeAt(0)) {
+                return null
+            }
+
             // Return `false` if importee should be treated as an external module,
-            // otherwise return `null` to let Rollup and other plugins handle it.
-            return importer && !/\0/.test(id) && externals.some(deps => deps.test(id)) && filterFn(id)
-                ? false
-                : null
+            // otherwise return `null` to let Rollup and other plugins handle it
+            return isExternal(id) && isNotExcluded(id) ? false : null
         }
     }
 }
