@@ -73,7 +73,6 @@ export default {
 By default, the plugin will mark all Node builtin modules and _all_ your `dev-`, `peer-` and `optionalDependencies` as external. Normal `dependencies` are left unmarked so Rollup will still bundle them with your code as expected in most situations.
 
 #### packagePath?: string | string[] = []
-
 If you're working with monorepos, the `packagePath` is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all package.json files in parent directories recursively until either the root git directory is reached or until no other package.json can be found.
 
 #### builtins?: boolean = true
@@ -81,11 +80,17 @@ If you're working with monorepos, the `packagePath` is made for you. It can take
 #### devDeps?: boolean = true
 #### peerDeps?: boolean = true
 #### optDeps?: boolean = true
-
 Set the `builtins`, `deps`, `devDeps`, `peerDeps` and/or `optDeps` options to `false` to prevent the corresponding dependencies from being externalized, therefore letting Rollup bundle them with your code. Set them to `true` for Rollup to treat the corresponding dependencies as external.
 
 #### include?: string | RegExp | (string | RegExp)[] = []
 #### exclude?: string | RegExp | (string | RegExp)[] = []
+Use the `include` option to force certain dependencies into the list of externals, for example:
+```js
+externals({
+  deps: false,          // Bundle dependencies in
+  include: /^fsevents/  // Except for fsevents
+})
+```
 
 Use the `exclude` option to remove certain dependencies from the list of externals, for example:
 ```js
@@ -93,16 +98,8 @@ externals({
   deps: true,           // Don't bundle dependencies, we'll import/require them at runtime instead
   exclude: [
     'electron-reload',  // Yet we want `electron-reload` bundled in
-    /^vuex?/            // as well as the VueJS family (vue, vuex, vue-router, etc.)
+    /^vue/              // as well as the VueJS family (vue, vuex, vue-router, etc.)
   ]
-})
-```
-
-Use the `include` option to force certain dependencies into the list of externals, for example:
-```js
-externals({
-  optDeps: false,       // Bundle optionalDependencies in
-  include: /^fsevents/  // Except for fsevents
 })
 ```
 
@@ -113,7 +110,7 @@ externals({
 // in your code, say '@/' is mapped to some directory:
 import something from '@/mylib'
 ```
-and you don't want `mylib` bundled in, then write:
+> and you don't want `mylib` bundled in, then write:
 ```js
 // in rollup.config.js:
 externals({
@@ -139,7 +136,6 @@ export default {
 
 
 ### Migrating from version 1.x
-
 - In 1.x, normal dependencies were externalized by default. This is no more true, so you'll need to change:
 ```js
 externals()
@@ -151,9 +147,8 @@ externals({ deps: true })
 if you want the same behavior.
 
 
-- For consistency with all other Rollup plugins out there, the `except` option from 1.x is now deprecated in favor of the Rollup-friendly `exclude` option. It will be removed in the next major release but is still accepted for backward compatibility and works exactly the same as `exclude` but it will issue a warning if used. To suppress this warning, just replace `except` with `exclude`.
+- For consistency with all other Rollup plugins out there, the `except` option from 1.x has been deprecated in 2.0 and removed in 3.0. Use the Rollup-friendly `exclude` option instead.
 
 
 ## Licence
-
 MIT
