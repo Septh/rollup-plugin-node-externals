@@ -11,6 +11,8 @@ export interface ExternalsOptions {
     packagePath?: string | string[]
     /** Mark node built-in modules like `path`, `fs`... as external. Defaults to `true`. */
     builtins?: boolean
+    /** Treat prefixed builtins as their unprefixed counterpart. Optional. Default: true */
+    prefixedBuiltins?: boolean | 'strip'
     /** Mark dependencies as external. Defaults to `false`. */
     deps?: boolean
     /** Mark devDependencies as external. Defaults to `true`. */
@@ -35,9 +37,10 @@ export interface ExternalsOptions {
  export default function externals(options: ExternalsOptions = {}): Plugin {
 
     // Consolidate options
-    const consolidatedOptions: Required<ExternalsOptions> = {
+    const config: Required<ExternalsOptions> = {
         packagePath: [],
         builtins: true,
+        prefixedBuiltins: true,
         deps: false,
         devDeps: true,
         peerDeps: true,
@@ -52,7 +55,7 @@ export interface ExternalsOptions {
 
     // Map the include and exclude options to arrays of regexes
     const [ include, exclude ] = [ 'include', 'exclude' ].map(optionName => []
-        .concat((consolidatedOptions as any)[optionName])
+        .concat((config as any)[optionName])
         .map((entry: string | RegExp, index: number): RegExp => {
             if (entry instanceof RegExp) {
                 return entry
@@ -82,26 +85,26 @@ export interface ExternalsOptions {
         async buildStart() {
 
             // 1) Filter NodeJS builtins, supporting potential import from a sub directory (e.g. 'fs/promises')
-            const builtins = (consolidatedOptions.builtins ? builtinModules : []).filter(isNotExcluded)
-            if (builtins.length > 0) {
-                externals.push(new RegExp('^(?:' + builtins.join('|') + ')(/.+)?$'))
+            const node = (config.builtins ? builtinModules : []).filter(isNotExcluded)
+            if (node.length > 0) {
+                externals.push(new RegExp('^(?:' + node.join('|') + ')(?:/.+)?$'))
             }
 
             // 2) Find and filter dependencies, supporting potential import from a sub directory (e.g. 'lodash/map')
-            const packagePaths: string[] = ([] as string[]).concat(consolidatedOptions.packagePath)
+            const packagePaths: string[] = ([] as string[]).concat(config.packagePath)
             const dependencies = (await findDependencies({
                 packagePaths: packagePaths.length > 0 ? packagePaths : findPackagePaths(),
                 keys: [
-                    consolidatedOptions.deps && 'dependencies',
-                    consolidatedOptions.devDeps && 'devDependencies',
-                    consolidatedOptions.peerDeps && 'peerDependencies',
-                    consolidatedOptions.optDeps && 'optionalDependencies'
+                    config.deps && 'dependencies',
+                    config.devDeps && 'devDependencies',
+                    config.peerDeps && 'peerDependencies',
+                    config.optDeps && 'optionalDependencies'
                 ].filter(Boolean) as string[],
                 warnings
             })).filter(isNotExcluded)
 
             if (dependencies.length > 0) {
-                externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(/.+)?$'))
+                externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(?:/.+)?$'))
             }
 
             // 3) Add the include option
@@ -111,21 +114,33 @@ export interface ExternalsOptions {
 
             // All done. Issue the warnings we may have collected
             let msg: string | undefined
-            // eslint-disable-next-line no-cond-assign
-            while (msg = warnings.shift()) {
+            while (msg = warnings.shift()) {    // eslint-disable-line no-cond-assign
                 this.warn(msg)
             }
         },
 
-        resolveId(id, importer) {
+        resolveId(importee, importer) {
             // Ignore entry chunks & don't mess with other plugins
-            if (!importer?.charCodeAt(0) || !id.charCodeAt(0)) {
+            if (!importer?.charCodeAt(0) || !importee.charCodeAt(0)) {
                 return null
             }
 
-            // Return `false` if importee should be treated as an external module,
+            // Remove node:/nodejs: prefix so builtins resolve to their unprefixed equivalent
+            let stripped = importee
+            if (config.prefixedBuiltins) {
+                if (stripped.startsWith('node:')) {
+                    stripped = stripped.slice(5)
+                }
+                else if (stripped.startsWith('nodejs:')) {
+                    stripped = stripped.slice(7)
+                }
+            }
+
+            // Return object if importee should be treated as an external module,
             // otherwise return `null` to let Rollup and other plugins handle it
-            return isExternal(id) && isNotExcluded(id) ? false : null
+            return isExternal(stripped) && isNotExcluded(stripped)
+                ? { id: config.prefixedBuiltins === 'strip' ? stripped : importee, external: true }
+                : null
         }
     }
 }

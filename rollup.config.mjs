@@ -1,12 +1,12 @@
 // @ts-check
 import { dirname } from 'path'
-import { builtinModules, createRequire } from 'module'
+import { builtinModules } from 'module'
 import resolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
 import ts from 'rollup-plugin-ts'
 
-// @ts-ignore
-const pkg = createRequire(import.meta.url)('./package.json')
+// https://rollupjs.org/guide/en/#using-untranspiled-config-files
+import pkg from './package.cjs'
 
 /**
  * A mini-plugin that resolves `node:` and `nodejs:` imports to their unprefixed equivalent.
@@ -18,7 +18,7 @@ function nodeColon() {
         resolveId(id) {
             for (const scheme of [ 'node:', 'nodejs:' ]) {
                 if (id.startsWith(scheme)) {
-                    return id.slice(scheme.length)
+                    return { id: id.slice(scheme.length), external: true}
                 }
             }
         }
@@ -31,7 +31,7 @@ function nodeColon() {
  */
 function emitPkg(type) {
     return {
-        name: 'emit-module-package-file',
+        name: 'emit-pkg',
         generateBundle() {
             this.emitFile({
                 type: 'asset',
@@ -42,21 +42,31 @@ function emitPkg(type) {
     }
 }
 
+/** @type {import('rollup').OutputOptions} */
+const commonOutput = {
+    sourcemap: true,
+    generatedCode: 'es2015'
+}
+
 /** @type {import('rollup').RollupOptions} */
 const config = {
     input: 'src/index.ts',
     output: [
         {
+            ...commonOutput,
             format: 'commonjs',
             file: pkg.main,
-            exports: 'named',
+            exports: 'auto',
+            sourcemap: true,
             plugins: [
                 emitPkg('commonjs')
-            ],
+            ]
         },
         {
+            ...commonOutput,
             format: 'module',
             file: pkg.module,
+            sourcemap: true,
             plugins: [
                 emitPkg('module')
             ]
@@ -69,7 +79,7 @@ const config = {
         ts({
             tsconfig: cfg => ({
                 ...cfg,
-                declarationDir: dirname(pkg.types),
+                declarationDir: dirname(pkg.types)
             })
         })
     ],

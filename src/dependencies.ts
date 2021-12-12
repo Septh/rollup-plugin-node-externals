@@ -11,10 +11,10 @@ function isInDirectory(parent: string, child: string): boolean {
 }
 
 /**
- * @internal
  * Iterates over package.json file paths recursively found in parent directories, starting from the
  * current working directory. If the current working directory is in a git repository, then package.json
  * files outside of the git repository will not be yielded.
+ * @internal
  */
 export async function* findPackagePaths(): AsyncGenerator<string> {
     // Find git root if in git repository
