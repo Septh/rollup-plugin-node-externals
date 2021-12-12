@@ -1,10 +1,5 @@
 {
     "compilerOptions": {
-        // Plugins
-        "plugins": [
-            { "name": "typescript-tslint-plugin" }
-        ],
-
         // Input
         "checkJs": false,
         "allowJs": false,

@@ -51,7 +51,7 @@ export interface ExternalsOptions {
     const warnings: string[] = []
 
     // Map the include and exclude options to arrays of regexes
-    const [ include, exclude ] = [ 'include', 'exclude' ].map(optionName => new Array()
+    const [ include, exclude ] = [ 'include', 'exclude' ].map(optionName => []
         .concat((consolidatedOptions as any)[optionName])
         .map((entry: string | RegExp, index: number): RegExp => {
             if (entry instanceof RegExp) {
@@ -61,7 +61,7 @@ export interface ExternalsOptions {
                 return new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$')
             }
             else {
-                if (!!entry) {
+                if (entry) {
                     warnings.push(`Ignoring wrong entry type #${index} in '${optionName}' option: '${entry}'`)
                 }
                 return /(?=no)match/
@@ -84,7 +84,7 @@ export interface ExternalsOptions {
             // 1) Filter NodeJS builtins, supporting potential import from a sub directory (e.g. 'fs/promises')
             const builtins = (consolidatedOptions.builtins ? builtinModules : []).filter(isNotExcluded)
             if (builtins.length > 0) {
-                externals.push(new RegExp('^(?:' + builtins.join('|') + ')(\/.+)?$'))
+                externals.push(new RegExp('^(?:' + builtins.join('|') + ')(/.+)?$'))
             }
 
             // 2) Find and filter dependencies, supporting potential import from a sub directory (e.g. 'lodash/map')
@@ -101,7 +101,7 @@ export interface ExternalsOptions {
             })).filter(isNotExcluded)
 
             if (dependencies.length > 0) {
-                externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(\/.+)?$'))
+                externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(/.+)?$'))
             }
 
             // 3) Add the include option
@@ -111,6 +111,7 @@ export interface ExternalsOptions {
 
             // All done. Issue the warnings we may have collected
             let msg: string | undefined
+            // eslint-disable-next-line no-cond-assign
             while (msg = warnings.shift()) {
                 this.warn(msg)
             }
