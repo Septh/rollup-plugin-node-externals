@@ -6,15 +6,15 @@ By default, Rollup doesn't know a thing about NodeJS, so trying to bundle simple
 
 The solution here is quite simple: you must tell Rollup that the `path` module is in fact `external`. This way, Rollup won't try to bundle it in and rather leave the `import` statement as is (or translate it to a `require()` call if bundling for CommonJS).
 
-However, this must be done for each and every NodeJS built-in that you happen to use in your program: `path`, `os`, `fs`, `url`, etc., which can quicky become cumbersome when done manually.
+However, this must be done for each and every NodeJS built-in you happen to use in your program: `path`, `os`, `fs`, `url`, etc., which can quicky become cumbersome when done manually.
 
 So the primary goal of this plugin is simply to automatically declare all NodeJS built-in modules as `external`.
 
-As an added bonus, this plugin will also allow you to declare your dependencies (as declared in your local or monorepo `package.json` file) as external.
+As an added bonus, this plugin will also allow you to declare your dependencies (as per in your local or monorepo `package.json` file) as external.
 
 
 ## Installation
-Use your favorite package manager. Mine is npm.
+Use your favorite package manager. Mine is [npm](https://www.npmjs.com).
 ```sh
 npm install --save-dev rollup-plugin-node-externals
 ```
@@ -59,6 +59,7 @@ export default {
 }
 ```
 
+### Options
 Most of the time, the built-in defaults are just what you need:
 ```typescript
 import externals from 'rollup-plugin-node-externals'
@@ -71,14 +72,11 @@ export default {
 }
 ```
 
-### Options
-By default, this plugin will mark all Node built-in modules and _all_ your `dev-`, `peer-` and `optionalDependencies` as external. Normal `dependencies` are left unmarked so Rollup will still bundle them with your code as expected in most situations.
-
 #### packagePath?: string | string[] = []
 If you're working with monorepos, the `packagePath` is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all package.json files in parent directories recursively until either the root git directory is reached or until no other package.json can be found.
 
 #### builtins?: boolean = true
-Set the `builtins` option to `false` if you'd like to use some shims for those.
+Set the `builtins` option to `false` if you'd like to use some shims for those. You'll most certainly need an other plugin for this.
 
 #### prefixedBuiltins?: boolean | 'strip' = true
 How to handle the `node:` (or sometimes `nodejs:`) prefix some authors use in their code (i.e., `import path from 'node:path'`). If `true` (default), prefixed builtins are treated as their unprefixed equivalent. If `strip`, the prefix is removed from the name and other plugins will never know it was there.
@@ -86,17 +84,17 @@ How to handle the `node:` (or sometimes `nodejs:`) prefix some authors use in th
 #### deps?: boolean = false
 Set the `deps` option to `true` to externalize your normal dependencies, therefore preventing Rollup from bundling them with your code.
 
-#### devDeps?: boolean = true,
+#### devDeps?: boolean = true
 #### peerDeps?: boolean = true
 #### optDeps?: boolean = true
-Set the `devDeps`, `peerDeps` and `optDeps` options to `false` to prevent the corresponding dependencies from being externalized, therefore letting Rollup bundle them with your code. Note that bundling these dependencies is quite meaningless but it might be useful as a transitional step before migrating them to `devDependencies`.
+Set the `devDeps`, `peerDeps` and `optDeps` options to `false` to prevent the corresponding dependencies from being externalized, therefore letting Rollup bundle them with your code. Note that bundling these dependencies is quite meaningless but it might be useful as a transitional step before migrating them to `dependencies`.
 
 #### include?: string | RegExp | (string | RegExp)[] = []
 #### exclude?: string | RegExp | (string | RegExp)[] = []
 Use the `include` option to force certain dependencies into the list of externals:
 ```typescript
 externals({
-  deps: false,          // Bundle dependencies in
+  deps: false,          // Deps will be bundled in
   include: /^fsevents/  // Except for fsevents
 })
 ```
@@ -104,7 +102,7 @@ externals({
 Conversely, use the `exclude` option to remove certain dependencies from the list of externals:
 ```typescript
 externals({
-  deps: true,           // Don't bundle dependencies, we'll import/require them at runtime instead
+  deps: true,           // Deps are external
   exclude: [
     'electron-reload'   // Yet we want `electron-reload` bundled in
   ]
@@ -116,7 +114,7 @@ externals({
 Falsy values in `include` and `exclude` are silently ignored. This allows for conditional constructs like so: `exclude: process.env.NODE_ENV === 'production' && /my-prod-only-dep/`.
 
 ### 2/ This plugin is not _that_ smart
-It uses an exact match against your imports, so if your are using some path substitution in your code, eg.:
+It uses an exact match against your imports, so if your are using some kind of path substitution in your code, eg.:
 ```typescript
 // In your code, say '@/' is mapped to some directory:
 import something from '@/mylib'
@@ -138,14 +136,15 @@ import resolve from '@rollup/plugin-node-resolve'
 ...
 
 export default {
-  // ...
+  ...
   plugins: [
     externals(),
     resolve(),
-    // other plugins
+    ...
   ]
 }
 ```
+As a general rule of thumb, you might want to always make this plugin the first one in the `plugins` array.
 
 ### 4/ Rollup rules
 Rollup's own `external` configuration option always takes precedence over this plugin. This is intentional.
