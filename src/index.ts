@@ -40,7 +40,7 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
     const config: Required<ExternalsOptions> = {
         packagePath: [],
         builtins: true,
-        prefixedBuiltins: true,
+        prefixedBuiltins: 'strip',
         deps: false,
         devDeps: true,
         peerDeps: true,
@@ -54,9 +54,9 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
     const warnings: string[] = []
 
     // Map the include and exclude options to arrays of regexes
-    const [ include, exclude ] = [ 'include', 'exclude' ].map(optionName => []
+    const [ include, exclude ] = [ 'include', 'exclude' ].map(optionName => ([] as (string | RegExp)[])
         .concat((config as any)[optionName])
-        .map((entry: string | RegExp, index: number): RegExp => {
+        .map((entry, index) => {
             if (entry instanceof RegExp) {
                 return entry
             }
@@ -72,12 +72,12 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
         })
     )
 
-    // Build a function to keep only non excluded dependencies
+    // Filter function to keep only non excluded dependencies
     const isNotExcluded = (id: string) => !exclude.some(rx => rx.test(id))
 
     // Array of the final regexes
     const externals: RegExp[] = []
-    const isExternal = (id: string) => externals.some(deps => deps.test(id))
+    const isExternal = (id: string) => externals.some(rx => rx.test(id))
 
     return {
         name: 'node-externals',
@@ -85,9 +85,9 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
         async buildStart() {
 
             // 1) Filter NodeJS builtins, supporting potential import from a sub directory (e.g. 'fs/promises')
-            const node = (config.builtins ? builtinModules : []).filter(isNotExcluded)
-            if (node.length > 0) {
-                externals.push(new RegExp('^(?:' + node.join('|') + ')(?:/.+)?$'))
+            const builtins = (config.builtins ? builtinModules : []).filter(isNotExcluded)
+            if (builtins.length > 0) {
+                externals.push(new RegExp('^(?:' + builtins.join('|') + ')(?:/.+)?$'))
             }
 
             // 2) Find and filter dependencies, supporting potential import from a sub directory (e.g. 'lodash/map')
@@ -119,13 +119,13 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
             }
         },
 
-        resolveId(importee, importer) {
+        resolveId(importee, importer, { isEntry }) {
             // Ignore entry chunks & don't mess with other plugins
-            if (!importer?.charCodeAt(0) || !importee.charCodeAt(0)) {
+            if (isEntry || !importee.charCodeAt(0) || !importer?.charCodeAt(0)) {
                 return null
             }
 
-            // Remove node:/nodejs: prefix so builtins resolve to their unprefixed equivalent
+            // Remove node: prefix so builtins resolve to their unprefixed equivalent
             let stripped = importee
             if (config.prefixedBuiltins) {
                 if (stripped.startsWith('node:')) {
