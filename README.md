@@ -34,7 +34,7 @@ export default {
       // Make node builtins external. Optional. Default: true
       builtins?: boolean,
 
-      // Treat prefixed builtins as their unprefixed counterpart. Optional. Default: true
+      // Treat prefixed builtins as their unprefixed counterpart. Optional. Default: 'strip'
       prefixedBuiltins?: boolean | 'strip',
 
       // Make pkg.dependencies external. Optional. Default: false
@@ -78,8 +78,8 @@ If you're working with monorepos, the `packagePath` is made for you. It can take
 #### builtins?: boolean = true
 Set the `builtins` option to `false` if you'd like to use some shims for those. You'll most certainly need [an other plugin](https://github.com/rollup/plugins/tree/master/packages/node-resolve/#resolving-built-ins-like-fs) for this.
 
-#### prefixedBuiltins?: boolean | 'strip' = true
-How to handle the `node:` (or sometimes `nodejs:`) prefix some authors use in their code (i.e., `import path from 'node:path'`). If `true` (default), prefixed builtins are treated as their unprefixed equivalent. If `strip`, the prefix is removed from the name and other plugins will never know it was there.
+#### prefixedBuiltins?: boolean | 'strip' = 'strip'
+How to handle the `node:` (or sometimes `nodejs:`) prefix some authors use in their code (i.e., `import path from 'node:path'`). If `false`, the import is used as-is to determine if it is external, meaning that `'node:path'` and `'path'` are considered two distincts imports. If `true`, prefixed builtins are treated as their unprefixed equivalent. If `strip` (default), the prefix is also removed from the name and other plugins will never know it was there.
 
 #### deps?: boolean = false
 Set the `deps` option to `true` to externalize your normal dependencies, therefore preventing Rollup from bundling them with your code.
