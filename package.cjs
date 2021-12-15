@@ -1,1 +1,2 @@
-module.exports = require('./package.json')
+const pkg = require('./package.json')
+module.exports = pkg

@@ -34,7 +34,7 @@ export interface ExternalsOptions {
  * Useful when you don't want to bundle node/npm modules with your own code
  * but rather import or require them at runtime.
  */
- export default function externals(options: ExternalsOptions = {}): Plugin {
+export default function externals(options: ExternalsOptions = {}): Plugin {
 
     // Consolidate options
     const config: Required<ExternalsOptions> = {

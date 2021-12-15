@@ -13,9 +13,6 @@
         // Output
         "target": "es2020",
         "module": "es2020",
-        "importHelpers": true,
-        "declaration": true,
-        "declarationMap": false,
 
         // Type checkings
         "strict": true, // Enables the following:
@@ -27,5 +24,7 @@
             // "strictFunctionTypes": true,
             // "strictPropertyInitialization": true,
 		"noImplicitReturns": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true
     }
 }

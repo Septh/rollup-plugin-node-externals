@@ -76,7 +76,7 @@ export default {
 If you're working with monorepos, the `packagePath` is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all package.json files in parent directories recursively until either the root git directory is reached or until no other package.json can be found.
 
 #### builtins?: boolean = true
-Set the `builtins` option to `false` if you'd like to use some shims for those. You'll most certainly need an other plugin for this.
+Set the `builtins` option to `false` if you'd like to use some shims for those. You'll most certainly need [an other plugin](https://github.com/rollup/plugins/tree/master/packages/node-resolve/#resolving-built-ins-like-fs) for this.
 
 #### prefixedBuiltins?: boolean | 'strip' = true
 How to handle the `node:` (or sometimes `nodejs:`) prefix some authors use in their code (i.e., `import path from 'node:path'`). If `true` (default), prefixed builtins are treated as their unprefixed equivalent. If `strip`, the prefix is removed from the name and other plugins will never know it was there.
