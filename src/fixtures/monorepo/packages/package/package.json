@@ -1,7 +1,8 @@
 {
   "dependencies": {
     "lodash": "^4.17.15",
-    "express": "4.17.1"
+    "express": "4.17.1",
+    "moment": "latest"
   },
   "peerDependencies": {
     "@babel/core": "^7.0.0"

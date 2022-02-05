@@ -10,14 +10,14 @@ test.serial('finds package paths in git monorepo', async t => {
 
     const packagePaths = [
         path('fixtures/monorepo/packages/package/package.json'),
-        path('fixtures/monorepo/package.json')
+        path('fixtures/monorepo/package.json'),
     ]
 
     // Should have two assertions
     t.plan(2)
 
     for await (const packagePath of findPackagePaths()) {
-        t.is(packagePath, packagePaths.shift())
+        t.is(packagePath, packagePaths.shift() as string)
     }
 })
 
@@ -35,7 +35,7 @@ test.serial('finds package paths in non-git monorepo', async t => {
     t.plan(3)
 
     for await (const packagePath of findPackagePaths()) {
-        t.is(packagePath, packagePaths.shift())
+        t.is(packagePath, packagePaths.shift() as string)
     }
 })
 
@@ -49,7 +49,10 @@ test.serial('finds dependencies in monorepo', async t => {
         warnings: []
     })
 
-    t.deepEqual(new Set(dependencies), new Set(['lodash', 'express', 'chalk']))
+    t.deepEqual(new Set(dependencies.sort()), new Set([
+        ...Object.keys(require(path('./fixtures/monorepo/packages/package/package.json')).dependencies ?? {}),
+        ...Object.keys(require(path('./fixtures/monorepo/package.json')).dependencies ?? {})
+    ].sort()))
 })
 
 test.serial('finds dev dependencies in monorepo', async t => {
@@ -62,5 +65,8 @@ test.serial('finds dev dependencies in monorepo', async t => {
         warnings: []
     })
 
-    t.deepEqual(new Set(devDependencies), new Set(['typescript', 'rollup']))
+    t.deepEqual(new Set(devDependencies.sort()), new Set([
+        ...Object.keys(require(path('./fixtures/monorepo/packages/package/package.json')).devDependencies ?? {}),
+        ...Object.keys(require(path('./fixtures/monorepo/package.json')).devDependencies ?? {})
+    ].sort()))
 })

@@ -1,6 +1,6 @@
 import { dirname, relative, isAbsolute } from 'path'
 import { promises as fs } from 'fs'
-import { findUp } from 'find-up'
+import findUp from 'find-up'
 
 /**
  * Determines if the `child` path is under the `parent` path.
@@ -52,6 +52,7 @@ export async function findDependencies(
     for await (const packagePath of packagePaths) {
         try {
             const pkg: { [key in PropertyKey]: any } = JSON.parse((await fs.readFile(packagePath)).toString()) ?? {}
+            // console.log(pkg)
 
             for (const key of keys) {
                 const dependenciesToVersions: { [key in PropertyKey]: any } = pkg[key] ?? {}

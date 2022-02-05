@@ -13,7 +13,7 @@ export interface ExternalsOptions {
     builtins?: boolean
     /** Treat prefixed builtins as their unprefixed counterpart. Optional. Default: true */
     prefixedBuiltins?: boolean | 'strip'
-    /** Mark dependencies as external. Defaults to `false`. */
+    /** Mark dependencies as external. Defaults to `true`. */
     deps?: boolean
     /** Mark devDependencies as external. Defaults to `true`. */
     devDeps?: boolean
@@ -27,21 +27,20 @@ export interface ExternalsOptions {
     exclude?: string | RegExp | (string | RegExp)[]
 }
 
+type IncludeExclude = Extract<keyof ExternalsOptions, 'include' | 'exclude'>
+
 /**
- * A Rollup plugin that automatically declares NodeJS built-in modules
- * and optionally npm dependencies as 'external'.
- *
- * Useful when you don't want to bundle node/npm modules with your own code
- * but rather import or require them at runtime.
+ * A Rollup plugin that automatically declares NodeJS built-in modules,
+ * and optionally npm dependencies, as 'external'.
  */
-export default function externals(options: ExternalsOptions = {}): Plugin {
+function externals(options: ExternalsOptions = {}): Plugin {
 
     // Consolidate options
     const config: Required<ExternalsOptions> = {
         packagePath: [],
         builtins: true,
         prefixedBuiltins: 'strip',
-        deps: false,
+        deps: true,
         devDeps: true,
         peerDeps: true,
         optDeps: true,
@@ -54,8 +53,8 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
     const warnings: string[] = []
 
     // Map the include and exclude options to arrays of regexes
-    const [ include, exclude ] = [ 'include', 'exclude' ].map(optionName => ([] as (string | RegExp)[])
-        .concat((config as any)[optionName])
+    const [ include, exclude ] = ([ 'include', 'exclude' ] as IncludeExclude[]).map(optionName => ([] as (string | RegExp)[])
+        .concat(config[optionName])
         .map((entry, index) => {
             if (entry instanceof RegExp) {
                 return entry
@@ -87,7 +86,7 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
             // 1) Filter NodeJS builtins, supporting potential import from a sub directory (e.g. 'fs/promises')
             const builtins = (config.builtins ? builtinModules : []).filter(isNotExcluded)
             if (builtins.length > 0) {
-                externals.push(new RegExp('^(?:' + builtins.join('|') + ')(?:/.+)?$'))
+                externals.push(new RegExp(`^(?:${builtins.join('|')})(?:/.+)?$`))
             }
 
             // 2) Find and filter dependencies, supporting potential import from a sub directory (e.g. 'lodash/map')
@@ -104,7 +103,7 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
             })).filter(isNotExcluded)
 
             if (dependencies.length > 0) {
-                externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(?:/.+)?$'))
+                externals.push(new RegExp(`^(?:${dependencies.join('|')})(?:/.+)?$`))
             }
 
             // 3) Add the include option
@@ -113,26 +112,27 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
             }
 
             // All done. Issue the warnings we may have collected
-            let msg: string | undefined
-            while (msg = warnings.shift()) {    // eslint-disable-line no-cond-assign
-                this.warn(msg)
+            while (warnings.length > 0) {
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                this.warn(warnings.shift()!)
             }
         },
 
         resolveId(importee, importer, { isEntry }) {
+
             // Ignore entry chunks & don't mess with other plugins
             if (isEntry || !importee.charCodeAt(0) || !importer?.charCodeAt(0)) {
                 return null
             }
 
-            // Remove node: prefix so builtins resolve to their unprefixed equivalent
+            // Remove node:/nodejs: prefix so builtins resolve to their unprefixed equivalent
             let stripped = importee
             if (config.prefixedBuiltins) {
-                if (stripped.startsWith('node:')) {
-                    stripped = stripped.slice(5)
+                if (importee.startsWith('node:')) {
+                    stripped = importee.slice(5)
                 }
-                else if (stripped.startsWith('nodejs:')) {
-                    stripped = stripped.slice(7)
+                else if (importee.startsWith('nodejs:')) {
+                    stripped = importee.slice(7)
                 }
             }
 
@@ -144,3 +144,6 @@ export default function externals(options: ExternalsOptions = {}): Plugin {
         }
     }
 }
+
+export default externals
+export { externals }

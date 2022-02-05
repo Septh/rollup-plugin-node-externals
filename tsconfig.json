@@ -3,6 +3,7 @@
         "src/index.ts"
     ],
     "compilerOptions": {
+
         // Input
         "lib": [ "es2020" ],
         "moduleResolution": "node",
@@ -11,20 +12,20 @@
         "allowSyntheticDefaultImports": true,
 
         // Output
+        "outDir": "out",
         "target": "es2020",
-        "module": "es2020",
+        "module": "CommonJS",
+        "declaration": true,
+        "declarationMap": false,
+        // "stripInternal": true,
 
         // Type checkings
-        "strict": true, // Enables the following:
-            // "noImplicitAny": true,
-            // "noImplicitThis": true,
-            // "alwaysStrict": true,
-            // "strictBindCallApply": true,
-            // "strictNullChecks": true,
-            // "strictFunctionTypes": true,
-            // "strictPropertyInitialization": true,
-		"noImplicitReturns": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true
+        "strict": true,
+        "noImplicitReturns": true,
+        "noUnusedLocals": false,
+        "noUnusedParameters": false,
+        "noPropertyAccessFromIndexSignature": true,
+        "noUncheckedIndexedAccess": false,
+        "exactOptionalPropertyTypes": true,
     }
 }
