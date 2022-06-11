@@ -1,3 +1,4 @@
+import path from 'node:path'
 import type { Plugin } from 'rollup'
 import { builtinModules } from 'module'
 import { findPackagePaths, findDependencies } from './dependencies'
@@ -6,7 +7,7 @@ export interface ExternalsOptions {
     /** Mark node built-in modules like `path`, `fs`... as external. Defaults to `true`. */
     builtins?: boolean
     /** How to treat prefixed builtins. Defaults to `true` (prefixed are considered the same as unprefixed). */
-    prefixedBuiltins?: boolean | 'strip'
+    prefixedBuiltins?: boolean | 'strip' | 'add'
     /**
      * Path/to/your/package.json file (or array of paths).
      * Defaults to all package.json files found in parent directories recursively.
@@ -27,7 +28,7 @@ export interface ExternalsOptions {
     exclude?: string | RegExp | (string | RegExp)[]
 }
 
-type IncludeExclude = Pick<ExternalsOptions, 'include' | 'exclude'>
+type IncludeExclude = keyof (ExternalsOptions['include'] | ExternalsOptions['exclude'])
 
 /**
  * A Rollup plugin that automatically declares NodeJS built-in modules,
@@ -54,7 +55,7 @@ function externals(options: ExternalsOptions = {}): Plugin {
 
     // Map the include and exclude options to arrays of regexes.
     const [ include, exclude ] = [ 'include', 'exclude' ].map(option => new Array<string | RegExp>()
-        .concat(config[option as keyof IncludeExclude])
+        .concat(config[option as IncludeExclude])
         .map((entry, index) => {
             if (entry instanceof RegExp)
                 return entry
@@ -77,15 +78,27 @@ function externals(options: ExternalsOptions = {}): Plugin {
     const externals: RegExp[] = []
     const isExternal = (id: string) => externals.some(rx => rx.test(id))
 
+    // Support for nodejs: prefix and sub directory.
+    const nodePrefixRx = /^(?:node(?:js)?:)?/
+
+    let builtins: Set<string>
+    if (config.builtins) {
+        const filtered = builtinModules.filter(isNotExcluded)
+        builtins = new Set([
+            ...filtered,
+            ...filtered.map(builtin => builtin.startsWith('node:') ? builtin : 'node:' + builtin)
+        ])
+    }
+    else builtins = new Set()
+
     return {
         name: 'node-externals',
 
         async buildStart() {
 
-            // 1) Filter NodeJS builtins, supporting potential import from a sub directory (e.g. 'fs/promises').
-            const builtins = (config.builtins ? builtinModules : []).filter(isNotExcluded)
-            if (builtins.length > 0) {
-                externals.push(new RegExp(`^(?:${builtins.join('|')})(?:/.+)?$`))
+            // 1) Add the include option.
+            if (include.length > 0) {
+                externals.push(...include)
             }
 
             // 2) Find and filter dependencies, supporting potential import from a sub directory (e.g. 'lodash/map').
@@ -102,12 +115,7 @@ function externals(options: ExternalsOptions = {}): Plugin {
             })).filter(isNotExcluded)
 
             if (dependencies.length > 0) {
-                externals.push(new RegExp(`^(?:${dependencies.join('|')})(?:/.+)?$`))
-            }
-
-            // 3) Add the include option.
-            if (include.length > 0) {
-                externals.push(...include)
+                externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(?:/.+)?$'))
             }
 
             // All done. Issue the warnings we may have collected.
@@ -117,28 +125,29 @@ function externals(options: ExternalsOptions = {}): Plugin {
             }
         },
 
-        resolveId(importee, importer, { isEntry }) {
+        resolveId(importee) {
 
-            // Ignore entry chunks & don't mess with other plugins.
-            if (isEntry || !importee.charCodeAt(0) || !importer?.charCodeAt(0)) {
+            // Ignore already resolved ids and relative imports.
+            if (path.isAbsolute(importee) || importee.startsWith('.') || importee.charCodeAt(0) === 0) {
                 return null
             }
 
-            // Remove node:/nodejs: prefix so builtins resolve to their unprefixed equivalent.
-            let stripped = importee
-            if (config.prefixedBuiltins) {
-                if (importee.startsWith('node:')) {
-                    stripped = importee.slice(5)
+            // Handle builtins.
+            if (builtins.has(importee)) {
+                if (config.prefixedBuiltins) {
+                    let stripped = importee.replace(nodePrefixRx, '')
+                    if (config.prefixedBuiltins === 'strip')
+                        importee = stripped
+                    else if (config.prefixedBuiltins === 'add')
+                        importee = 'node:' + stripped
                 }
-                else if (importee.startsWith('nodejs:')) {
-                    stripped = importee.slice(7)
-                }
+
+                return { id: importee, external: true }
             }
 
-            // Return object if importee should be treated as an external module,
-            // otherwise return `null` to let Rollup and other plugins handle it.
-            return isExternal(stripped) && isNotExcluded(stripped)
-                ? { id: config.prefixedBuiltins === 'strip' ? stripped : importee, external: true }
+            // Handle dependencies.
+            return isExternal(importee) && isNotExcluded(importee)
+                ? false
                 : null
         }
     }
