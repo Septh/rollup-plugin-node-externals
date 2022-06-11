@@ -2,11 +2,11 @@
 A Rollup plugin that automatically declares NodeJS built-in modules as `external`. Also handles npm dependencies, devDependencies, peerDependencies and optionalDependencies. Works in monorepos too!
 
 > ## Breaking changes in version 4
-> - In previous versions, the `deps` option (see below) defaulted to `false`. This was practial, but often wrong: when bundling for distribution, you want your own dependencies to be installed by the package manager alongside your package, so they should not be bundled in the code. Therefore, the `deps` option now defaults to `true`.
-> - `rollup-plugin-node-externals` now requires Node 14 (up from Node 12 for previous versions).
-> - `rollup-plugin-node-externals` now has a _peer dependency_ on Rollup 2.60.0.
+> - In previous versions, the `deps` option (see below) defaulted to `false`.<br>This was practical, but often wrong: when bundling for distribution, you want your own dependencies to be installed by the package manager alongside your package, so they should not be bundled in the code. Therefore, the `deps` option now defaults to `true`.
+> - Now requires Node 14 (up from Node 12 for previous versions).
+> - Now has a _peer dependency_ on Rollup 2.60.0.
 
-## Why?
+## Why do you need this?
 <details><summary>(click to expand)</summary>
 By default, Rollup doesn't know a thing about NodeJS, so trying to bundle simple things like `import * as path from 'path'` in your code generates an `Unresolved dependencies` warning.
 
@@ -27,12 +27,12 @@ npm install --save-dev rollup-plugin-node-externals
 
 ## Usage
 
-- To bundle _a package that depends on other packages **at runtime**_ (e.g., a library or a NodeJS CLI), install your own dependencies with `--save`. Then, the built-in defaults are just what you need:
+- To bundle _a package that depends on other packages **at runtime**_ (e.g., a libray or a NodeJS CLI), the built-in defaults are just what you need:
 ```typescript
 export default {
   ...
   plugins: [
-    externals(),  // Make all Node builtins, deps, devDeps, peerDeps and optDeps external
+    externals(),  // Make all Node builtins and all dependencies external
   ]
 }
 ```
@@ -43,12 +43,25 @@ export default {
   ...
   plugins: [
     externals({
-      deps: false,    // If you installed your own deps with --save
-      devDeps: false  // If you installed your own deps with --save-dev
+      deps: false,    // Dependencies will be bundled in
     }),
   ]
 }
 ```
+
+- You may also want to bundle some libraries with your code but still `import`/`require` others at runtime. In that case, you could use something like:
+```typescript
+export default {
+  ...
+  plugins: [
+    externals({
+      deps: true,     // Regular dependencies are external
+      devDeps: false  // devDependencies will be bundled in
+    }),
+  ]
+}
+```
+
 
 ### Options
 
@@ -59,45 +72,49 @@ export default {
   ...
   plugins: [
     externals({
+      // Make node builtins external. Optional. Default: true.
+      builtins?: boolean,
+
+      // Treat prefixed builtins as their unprefixed counterpart. Optional. Default: 'strip' (will be 'add' in next major).
+      prefixedBuiltins?: boolean | 'strip' | 'add',
+
       // The path(s) to your package.json. Optional. See below for default.
       packagePath?: string | string[],
 
-      // Make node builtins external. Optional. Default: true
-      builtins?: boolean,
-
-      // Treat prefixed builtins as their unprefixed counterpart. Optional. Default: 'strip'
-      prefixedBuiltins?: boolean | 'strip',
-
-      // Make pkg.dependencies external. Optional. Default: true
+      // Make pkg.dependencies external. Optional. Default: true.
       deps?: boolean,
 
-      // Make pkg.devDependencies external. Optional. Default: true
+      // Make pkg.devDependencies external. Optional. Default: true.
       devDeps?: boolean,
 
-      // Make pkg.peerDependencies external. Optional. Default: true
+      // Make pkg.peerDependencies external. Optional. Default: true.
       peerDeps?: boolean,
 
-      // Make pkg.optionalDependencies external. Optional. Default: true
+      // Make pkg.optionalDependencies external. Optional. Default: true.
       optDeps?: boolean,
 
-      // Modules to force include in externals. Optional. Default: []
+      // Modules to force include in externals. Optional. Default: [].
       include?: string | RegExp | (string | RegExp)[],
 
-      // Modules to force exclude from externals. Optional. Default: []
+      // Modules to force exclude from externals. Optional. Default: [].
       exclude?: string | RegExp | (string | RegExp)[]
     })
   ]
 }
 ```
 
-#### packagePath?: string | string[] = []
-If you're working with monorepos, the `packagePath` is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all package.json files in parent directories recursively until either the root git directory is reached or until no other package.json can be found.
-
 #### builtins?: boolean = true
 Set the `builtins` option to `false` if you'd like to use some shims for those. You'll most certainly need [an other plugin](https://github.com/rollup/plugins/tree/master/packages/node-resolve/#resolving-built-ins-like-fs) for this.
 
-#### prefixedBuiltins?: boolean | 'strip' = 'strip'
-How to handle the `node:` (or sometimes `nodejs:`) prefix some authors use in their code (i.e., `import path from 'node:path'`). If `false`, the import is used as-is to determine if it is external, meaning that `'node:path'` and `'path'` are considered two distincts imports. If `true`, prefixed builtins are treated as their unprefixed equivalent. If `strip` (the default), the prefix is also removed from the name and other plugins will never know it was there.
+#### prefixedBuiltins?: boolean | 'strip' | 'add' = 'strip'
+How to handle the `node:` (or the legacy `nodejs:`) prefix some authors use in their code (i.e., `import path from 'node:path'`).
+- If `false`, the import is used as-is, meaning that `'node:path'` and `'path'` are considered two distincts imports. **This may cause redundant imports in your final code if you (or your dependencies's) are mixing prefixed and unprefixed imports.**
+- If `true`, prefixed builtins are simply treated as their unprefixed equivalent. _Note: This value is now deprecated and will be removed in the next major release of this plugin._
+- If `strip` (the default), the import is resolved unprefixed. In effect, this homogenizes all your node imports to their unprefixed version.
+- If `add`, the `node:` prefix is added. In effect, this homogenizes all your node imports to their prefixed version. _Note: `'add'` will be the default for this option in the next major release of this plugin._
+
+#### packagePath?: string | string[] = []
+If you're working with monorepos, the `packagePath` option is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all package.json files in parent directories recursively until either the root git directory is reached or until no other package.json can be found.
 
 #### deps?: boolean = true
 #### devDeps?: boolean = true
