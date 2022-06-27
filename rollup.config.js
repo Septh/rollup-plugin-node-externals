@@ -8,23 +8,25 @@ import { defineConfig } from 'rollup'
 import pkg from './package.json'
 
 /**
- * @param {'commonjs'|'module'} type
- * @returns { import('rollup').Plugin }
+ * @type { () => import('rollup').Plugin }
  */
-function emitPkg(type) {
+function packageType() {
     return {
-        name: 'emit-pkg',
-        generateBundle() {
-            this.emitFile({
-                type: 'asset',
-                fileName: 'package.json',
-                source: JSON.stringify({ type }, undefined, 2)
-            })
+        name: 'package-type',
+        renderStart({ format }) {
+            const type = { cjs: 'commonjs', es: 'module' }[ format ]
+            if (type) {
+                this.emitFile({
+                    type: 'asset',
+                    fileName: 'package.json',
+                    source: JSON.stringify({ type }, undefined, 2)
+                })
+            }
         }
     }
 }
 
-const cfg = defineConfig({
+export default defineConfig({
     input: 'src/index.ts',
     output: [
         {
@@ -33,16 +35,14 @@ const cfg = defineConfig({
             interop: 'default',
             sourcemap: true,
             generatedCode: 'es2015',
-            exports: 'named',
-            plugins: [ emitPkg('commonjs') ]
+            exports: 'named'
         },
         {
             file: pkg.module,
             format: 'module',
             interop: 'default',
             sourcemap: true,
-            generatedCode: 'es2015',
-            plugins: [ emitPkg('module') ]
+            generatedCode: 'es2015'
         }
     ],
     plugins: [
@@ -52,9 +52,8 @@ const cfg = defineConfig({
             hook: {
                 outputPath: (_path, kind) => kind === 'declaration' ? normalize(pkg.types) : undefined
             }
-        })
+        }),
+        packageType()
     ],
     external: Object.keys(pkg.dependencies) // nodeResolve will take care of builtins
 })
-
-export default cfg
