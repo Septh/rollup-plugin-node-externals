@@ -1,13 +1,13 @@
-import path from 'node:path'
-import type { Plugin } from 'rollup'
+import path from 'path'
 import { builtinModules } from 'module'
 import { findPackagePaths, findDependencies } from './dependencies'
+import type { Plugin } from 'rollup'
 
 export interface ExternalsOptions {
     /** Mark node built-in modules like `path`, `fs`... as external. Defaults to `true`. */
     builtins?: boolean
     /** How to treat prefixed builtins. Defaults to `true` (prefixed are considered the same as unprefixed). */
-    prefixedBuiltins?: boolean | 'strip' | 'add'
+    builtinsPrefix?: 'add' | 'strip'
     /**
      * Path/to/your/package.json file (or array of paths).
      * Defaults to all package.json files found in parent directories recursively.
@@ -26,9 +26,11 @@ export interface ExternalsOptions {
     include?: string | RegExp | (string | RegExp)[]
     /** Exclude these deps from the list of externals, regardless of other settings. Defaults to `[]`  */
     exclude?: string | RegExp | (string | RegExp)[]
+    /**
+     * @deprecated - Please use `builtinsPrefix`instead.
+    */
+    prefixedBuiltins?: boolean | 'strip' | 'add'
 }
-
-type IncludeExclude = keyof (ExternalsOptions['include'] | ExternalsOptions['exclude'])
 
 /**
  * A Rollup plugin that automatically declares NodeJS built-in modules,
@@ -36,10 +38,13 @@ type IncludeExclude = keyof (ExternalsOptions['include'] | ExternalsOptions['exc
  */
 function externals(options: ExternalsOptions = {}): Plugin {
 
+    // This will store all eventual warnings until we can display them.
+    const warnings: string[] = []
+
     // Consolidate options
     const config: Required<ExternalsOptions> = {
         builtins: true,
-        prefixedBuiltins: 'strip',
+        builtinsPrefix: 'add',
         packagePath: [],
         deps: true,
         devDeps: true,
@@ -47,61 +52,66 @@ function externals(options: ExternalsOptions = {}): Plugin {
         optDeps: true,
         include: [],
         exclude: [],
+
+        prefixedBuiltins: 'strip',
+
         ...options
     }
 
-    // This will store all eventual warnings until we can display them.
-    const warnings: string[] = []
+    if ('prefixedBuiltins' in options) {
+        warnings.push("The 'prefixedBuiltins' option is now deprecated, " +
+            "please use 'builtinsPrefix' instead to silent this warning.")
+    }
+    else if ('builtinsPrefix' in options) {
+        config.prefixedBuiltins = options.builtinsPrefix
+    }
 
     // Map the include and exclude options to arrays of regexes.
-    const [ include, exclude ] = [ 'include', 'exclude' ].map(option => new Array<string | RegExp>()
-        .concat(config[option as IncludeExclude])
-        .map((entry, index) => {
-            if (entry instanceof RegExp)
-                return entry
-
-            if (typeof entry === 'string')
-                return new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$')
-
-            if (entry) {
-                warnings.push(`Ignoring wrong entry type #${index} in '${option}' option: '${entry}'`)
-            }
-
-            return /(?=no)match/
-        })
+    const [ include, exclude ] = [ 'include', 'exclude' ].map(option =>
+        ([] as (string | RegExp)[])
+            .concat(config[option as 'include' | 'exclude'])
+            .reduce((result, entry, index) => {
+                if (entry instanceof RegExp)
+                    result.push(entry)
+                else if (typeof entry === 'string')
+                    result.push(new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
+                else if (entry) {
+                    warnings.push(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
+                }
+                return result
+            }, [] as RegExp[])
     )
 
     // A filter function to keep only non excluded dependencies.
     const isNotExcluded = (id: string) => !exclude.some(rx => rx.test(id))
 
     // The array of the final regexes.
-    const externals: RegExp[] = []
+    let externals: RegExp[] = []
     const isExternal = (id: string) => externals.some(rx => rx.test(id))
 
-    // Support for nodejs: prefix and sub directory.
-    const nodePrefixRx = /^(?:node(?:js)?:)?/
-
-    let builtins: Set<string>
+    // Support for builtin modules.
+    const builtins: Set<string> = new Set(),
+        alwaysSchemed: Set<string> = new Set()
     if (config.builtins) {
-        const filtered = builtinModules.filter(isNotExcluded)
-        builtins = new Set([
-            ...filtered,
-            ...filtered.map(builtin => builtin.startsWith('node:') ? builtin : 'node:' + builtin)
-        ])
+        const filtered = builtinModules.filter(b => isNotExcluded(b) && isNotExcluded('node:' + b))
+        for (const builtin of filtered) {
+            builtins.add(builtin)
+            if (builtin.startsWith('node:'))
+                alwaysSchemed.add(builtin)
+            else
+                builtins.add('node:' + builtin)
+        }
     }
-    else builtins = new Set()
 
     return {
         name: 'node-externals',
 
         async buildStart() {
 
-            // 1) Add the include option.
-            if (include.length > 0) {
-                externals.push(...include)
-            }
+            // Begin with the include option as it has precedence over the other options.
+            externals = [ ...include ]
 
-            // 2) Find and filter dependencies, supporting potential import from a sub directory (e.g. 'lodash/map').
+            // Find and filter dependencies, supporting potential import from a sub directory (e.g. 'lodash/map').
             const packagePaths: string[] = ([] as string[]).concat(config.packagePath)
             const dependencies = (await findDependencies({
                 packagePaths: packagePaths.length > 0 ? packagePaths : findPackagePaths(),
@@ -118,31 +128,33 @@ function externals(options: ExternalsOptions = {}): Plugin {
                 externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(?:/.+)?$'))
             }
 
-            // All done. Issue the warnings we may have collected.
-            while (warnings.length > 0) {
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                this.warn(warnings.shift()!)
+            // Issue the warnings we may have collected.
+            let warning: string | undefined
+            while ((warning = warnings.shift())) {
+                this.warn(warning)
             }
         },
 
         resolveId(importee) {
 
-            // Ignore already resolved ids and relative imports.
-            if (path.isAbsolute(importee) || importee.startsWith('.') || importee.charCodeAt(0) === 0) {
+            // Ignore already resolved ids, relative imports and virtual modules.
+            if (path.isAbsolute(importee) || /^(?:\0|\.{1,2}[\\/])/.test(importee))
                 return null
-            }
 
-            // Handle builtins.
+            // Handle builtins first.
+            if (alwaysSchemed.has(importee))
+                return false
+
             if (builtins.has(importee)) {
-                if (config.prefixedBuiltins) {
-                    let stripped = importee.replace(nodePrefixRx, '')
-                    if (config.prefixedBuiltins === 'strip')
-                        importee = stripped
-                    else if (config.prefixedBuiltins === 'add')
-                        importee = 'node:' + stripped
-                }
+                if (config.prefixedBuiltins === false)
+                    return false
 
-                return { id: importee, external: true }
+                const stripped = importee.replace(/^node:/, '')
+                const prefixed = 'node:' + stripped
+
+                return config.prefixedBuiltins === 'strip'
+                    ? { id: stripped, external: true }
+                    : { id: prefixed, external: true }
             }
 
             // Handle dependencies.

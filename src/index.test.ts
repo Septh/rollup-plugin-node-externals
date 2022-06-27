@@ -63,10 +63,7 @@ test('prefixedBuiltins === false', async t => {
     await plugin.buildStart(fakeInputOptions)
 
     for (const source of [ 'node:path', 'path' ]) {
-        t.deepEqual(
-            await plugin.resolveId(source),
-            { id: source, external: true }
-        )
+        t.false(await plugin.resolveId(source))
     }
 })
 
@@ -77,7 +74,7 @@ test('prefixedBuiltins === true (default)', async t => {
     for (const source of [ 'node:path', 'path' ]) {
         t.deepEqual(
             await plugin.resolveId(source),
-            { id: source, external: true }
+            { id: 'node:path', external: true }
         )
     }
 })
