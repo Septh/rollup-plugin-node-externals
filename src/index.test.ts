@@ -12,6 +12,7 @@ const fakeInputOptions = {} as NormalizedInputOptions
 const externalsOptionsArbitrary = (): Arbitrary<ExternalsOptions> => fc.record({
     packagePath: fc.string(),
     builtins: fc.boolean(),
+    builtinsPrefix: fc.oneof(fc.constant<'strip'>('strip'), fc.constant<'add'>('add')),
     prefixedBuiltins: fc.oneof(fc.boolean(), fc.constant<'strip'>('strip'), fc.constant<'add'>('add')),
     deps: fc.boolean(),
     devDeps: fc.boolean(),
@@ -60,6 +61,7 @@ test.serial('monorepo usage', async t => {
 
 test('prefixedBuiltins === false', async t => {
     const plugin = externals({ prefixedBuiltins: false }) as TestedPlugin
+    plugin.warn = () => {}
     await plugin.buildStart(fakeInputOptions)
 
     for (const source of [ 'node:path', 'path' ]) {
@@ -69,6 +71,7 @@ test('prefixedBuiltins === false', async t => {
 
 test('prefixedBuiltins === true (default)', async t => {
     const plugin = externals({ prefixedBuiltins: true }) as TestedPlugin
+    plugin.warn = () => {}
     await plugin.buildStart(fakeInputOptions)
 
     for (const source of [ 'node:path', 'path' ]) {
@@ -81,6 +84,7 @@ test('prefixedBuiltins === true (default)', async t => {
 
 test('prefixedBuiltins === "strip"', async t => {
     const plugin = externals({ prefixedBuiltins: 'strip' }) as TestedPlugin
+    plugin.warn = () => {}
     await plugin.buildStart(fakeInputOptions)
 
     for (const source of [ 'node:path', 'path' ]) {
@@ -93,6 +97,7 @@ test('prefixedBuiltins === "strip"', async t => {
 
 test('prefixedBuiltins === "add"', async t => {
     const plugin = externals({ prefixedBuiltins: 'add' }) as TestedPlugin
+    plugin.warn = () => {}
     await plugin.buildStart(fakeInputOptions)
 
     for (const source of [ 'node:path', 'path' ]) {
