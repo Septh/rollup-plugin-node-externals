@@ -22,7 +22,7 @@
     "modules",
     "monorepo"
   ],
-  "homepage": "https://github.com/Septh/rollup-plugin-node-externals",
+  "homepage": "https://github.com/Septh/rollup-plugin-node-externals#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/Septh/rollup-plugin-node-externals"
@@ -52,8 +52,8 @@
     ]
   },
   "scripts": {
-    "build": "rollup -c",
-    "watch": "rollup -cw",
+    "build": "rimraf dist && rollup -c",
+    "watch": "rimraf dist && rollup -cw",
     "test": "mkdir -p ./src/fixtures/monorepo/.git && ava --no-worker-threads",
     "watch-tests": "mkdir -p ./src/fixtures/monorepo/.git && ava --no-worker-threads -w",
     "lint": "eslint src/index.ts",
@@ -64,7 +64,6 @@
     "find-up": "^5.0.0"
   },
   "devDependencies": {
-    "@rollup/plugin-alias": "^3.1.9",
     "@rollup/plugin-commonjs": "^22.0.0",
     "@rollup/plugin-node-resolve": "^13.3.0",
     "@typescript-eslint/eslint-plugin": "^5.27.1",
