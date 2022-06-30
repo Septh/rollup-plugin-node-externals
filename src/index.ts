@@ -42,9 +42,10 @@ function externals(options: ExternalsOptions = {}): Plugin {
     const warnings: string[] = []
 
     // Consolidate options
-    const config: Required<ExternalsOptions> = {
+    const config: Required<ExternalsOptions> & { _builtinsPrefix: 'ignore' | 'add' | 'strip' } = {
         builtins: true,
-        builtinsPrefix: 'add',
+        builtinsPrefix: 'strip',    // Will be be 'add' v5
+        prefixedBuiltins: 'strip',  // Will be removed in v5
         packagePath: [],
         deps: true,
         devDeps: true,
@@ -53,23 +54,31 @@ function externals(options: ExternalsOptions = {}): Plugin {
         include: [],
         exclude: [],
 
-        prefixedBuiltins: 'strip',
+        ...options,
 
-        ...options
+        _builtinsPrefix: 'strip',           // Used to handle prefixes until v5
     }
 
-    if ('prefixedBuiltins' in options) {
+    if ('builtinsPrefix' in options) {
+        config._builtinsPrefix = options.builtinsPrefix
+    }
+    else if ('prefixedBuiltins' in options) {
         warnings.push("The 'prefixedBuiltins' option is now deprecated, " +
             "please use 'builtinsPrefix' instead to silent this warning.")
-    }
-    else if ('builtinsPrefix' in options) {
-        config.prefixedBuiltins = options.builtinsPrefix
+
+        const { prefixedBuiltins } = options
+        config._builtinsPrefix =
+            prefixedBuiltins === false
+                ? 'ignore'
+                : prefixedBuiltins === true || prefixedBuiltins === 'add'
+                    ? 'add'
+                    : 'strip'
     }
 
     // Map the include and exclude options to arrays of regexes.
     const [ include, exclude ] = [ 'include', 'exclude' ].map(option =>
         ([] as (string | RegExp)[])
-            .concat(config[option as 'include' | 'exclude'])
+            .concat(config[ option as 'include' | 'exclude' ])
             .reduce((result, entry, index) => {
                 if (entry instanceof RegExp)
                     result.push(entry)
@@ -82,6 +91,32 @@ function externals(options: ExternalsOptions = {}): Plugin {
             }, [] as RegExp[])
     )
 
+    // Support for builtin modules.
+    const nodePrefix = 'node:'
+    const nodePrefixRx = /^node:/
+    const _builtinModules = {
+        bare:          [] as string[],  // w/o schemed-only builtins
+        schemed:       [] as string[],  // w/ schemed-only builtins
+        alwaysSchemed: [] as string[]   // e.g., node:test in node 18+
+    }
+
+    builtinModules.forEach(builtin => {
+        if (builtin.startsWith(nodePrefix)) {
+            _builtinModules.schemed.push(builtin)
+            _builtinModules.alwaysSchemed.push(builtin)
+        }
+        else {
+            _builtinModules.bare.push(builtin)
+            _builtinModules.schemed.push(nodePrefix + builtin)
+        }
+    })
+
+    const builtins = new Set([
+        ..._builtinModules.bare,
+        ..._builtinModules.schemed
+    ])
+    const alwaysSchemed = new Set(_builtinModules.alwaysSchemed)
+
     // A filter function to keep only non excluded dependencies.
     const isNotExcluded = (id: string) => !exclude.some(rx => rx.test(id))
 
@@ -89,78 +124,69 @@ function externals(options: ExternalsOptions = {}): Plugin {
     let externals: RegExp[] = []
     const isExternal = (id: string) => externals.some(rx => rx.test(id))
 
-    // Support for builtin modules.
-    const builtins: Set<string> = new Set(),
-        alwaysSchemed: Set<string> = new Set()
-    if (config.builtins) {
-        const filtered = builtinModules.filter(b => isNotExcluded(b) && isNotExcluded('node:' + b))
-        for (const builtin of filtered) {
-            builtins.add(builtin)
-            if (builtin.startsWith('node:'))
-                alwaysSchemed.add(builtin)
-            else
-                builtins.add('node:' + builtin)
-        }
-    }
-
     return {
         name: 'node-externals',
 
         async buildStart() {
 
-            // Begin with the include option as it has precedence over the other options.
+            // Begin with the include option as it has precedence over the other inclusion options.
             externals = [ ...include ]
 
-            // Find and filter dependencies, supporting potential import from a sub directory (e.g. 'lodash/map').
-            const packagePaths: string[] = ([] as string[]).concat(config.packagePath)
-            const dependencies = (await findDependencies({
-                packagePaths: packagePaths.length > 0 ? packagePaths : findPackagePaths(),
-                keys: [
-                    config.deps     && 'dependencies',
-                    config.devDeps  && 'devDependencies',
-                    config.peerDeps && 'peerDependencies',
-                    config.optDeps  && 'optionalDependencies'
-                ].filter(Boolean) as string[],
-                warnings
-            })).filter(isNotExcluded)
+            // Add builtins
+            if (config.builtins) {
+                externals.push(
+                    new RegExp('^(?:' + _builtinModules.bare.filter(isNotExcluded).join('|') + ')$'),
+                    new RegExp('^node:(?:' + _builtinModules.schemed.filter(isNotExcluded).map(id => id.replace(nodePrefixRx, '')).join('|') + ')$'),
+                )
+            }
 
-            if (dependencies.length > 0) {
-                externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(?:/.+)?$'))
+            // Find and filter dependencies, supporting potential import from a sub directory (e.g. 'lodash/map').
+            if (config.deps || config.devDeps || config.peerDeps || config.optDeps) {
+                const packagePaths: string[] = ([] as string[]).concat(config.packagePath)
+                const dependencies = (await findDependencies({
+                    packagePaths: packagePaths.length > 0 ? packagePaths : findPackagePaths(),
+                    keys: [
+                        config.deps     && 'dependencies',
+                        config.devDeps  && 'devDependencies',
+                        config.peerDeps && 'peerDependencies',
+                        config.optDeps  && 'optionalDependencies'
+                    ].filter(Boolean) as string[],
+                    warnings
+                })).filter(isNotExcluded)
+
+                if (dependencies.length > 0) {
+                    externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(?:/.+)?$'))
+                }
             }
 
             // Issue the warnings we may have collected.
-            let warning: string | undefined
-            while ((warning = warnings.shift())) {
-                this.warn(warning)
+            while (warnings.length > 0) {
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                this.warn(warnings.shift()!)
             }
         },
 
-        resolveId(importee) {
+        resolveId(id) {
 
             // Ignore already resolved ids, relative imports and virtual modules.
-            if (path.isAbsolute(importee) || /^(?:\0|\.{1,2}[\\/])/.test(importee))
+            if (path.isAbsolute(id) || /^(?:\0|\.{1,2}[\\/])/.test(id))
                 return null
 
-            // Handle builtins first.
-            if (alwaysSchemed.has(importee))
-                return false
+            // Check for externality.
+            const external = isExternal(id) && isNotExcluded(id)
 
-            if (builtins.has(importee)) {
-                if (config.prefixedBuiltins === false)
-                    return false
+            // If not a builtin, or we're told not to handle prefixes, return status immediately.
+            if (!builtins.has(id) || config._builtinsPrefix === 'ignore')
+                return external ? false : null
 
-                const stripped = importee.replace(/^node:/, '')
-                const prefixed = 'node:' + stripped
-
-                return config.prefixedBuiltins === 'strip'
-                    ? { id: stripped, external: true }
-                    : { id: prefixed, external: true }
+            // Otherwise, handle prefix.
+            const stripped = id.replace(nodePrefixRx, '')
+            return {
+                id: alwaysSchemed.has(id) || config._builtinsPrefix === 'add'
+                    ? 'node:' + stripped
+                    : stripped,
+                external
             }
-
-            // Handle dependencies.
-            return isExternal(importee) && isNotExcluded(importee)
-                ? false
-                : null
         }
     }
 }
