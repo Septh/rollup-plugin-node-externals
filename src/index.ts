@@ -1,35 +1,100 @@
-import path from 'path'
-import { builtinModules } from 'module'
-import { findPackagePaths, findDependencies } from './dependencies'
+import path from 'node:path'
+import fs from 'node:fs'
+import { builtinModules } from 'node:module'
 import type { Plugin } from 'rollup'
 
 export interface ExternalsOptions {
-    /** Mark node built-in modules like `path`, `fs`... as external. Defaults to `true`. */
+
+    /**
+     * Mark node built-in modules like `path`, `fs`... as external.
+     *
+     * Defaults to `true`.
+     */
     builtins?: boolean
-    /** How to treat prefixed builtins. Defaults to `true` (prefixed are considered the same as unprefixed). */
+
+    /**
+     * node: prefix handing for importing Node builtins:
+     * - `'add'`    turns `'path'` to `'node:path'`
+     * - `'strip'`  turns `'node:path'` to `'path'`
+     *
+     * Defaults to `add`.
+     */
     builtinsPrefix?: 'add' | 'strip'
+
     /**
      * Path/to/your/package.json file (or array of paths).
+     *
      * Defaults to all package.json files found in parent directories recursively.
-     * Won't got outside of a git repository.
+     * Won't go outside of a git repository.
      */
     packagePath?: string | string[]
-    /** Mark dependencies as external. Defaults to `true`. */
-    deps?: boolean
-    /** Mark devDependencies as external. Defaults to `true`. */
-    devDeps?: boolean
-    /** Mark peerDependencies as external. Defaults to `true`. */
-    peerDeps?: boolean
-    /** Mark optionalDependencies as external. Defaults to `true`. */
-    optDeps?: boolean
-    /** Force these deps in the list of externals, regardless of other settings. Defaults to `[]`  */
-    include?: string | RegExp | (string | RegExp)[]
-    /** Exclude these deps from the list of externals, regardless of other settings. Defaults to `[]`  */
-    exclude?: string | RegExp | (string | RegExp)[]
+
     /**
-     * @deprecated - Please use `builtinsPrefix`instead.
-    */
-    prefixedBuiltins?: boolean | 'strip' | 'add'
+     * Mark dependencies as external.
+     *
+     * Defaults to `true`.
+     */
+    deps?: boolean
+
+    /**
+     * Mark devDependencies as external.
+     *
+     * Defaults to `false`.
+     */
+    devDeps?: boolean
+
+    /**
+     * Mark peerDependencies as external.
+     *
+     * Defaults to `true`.
+     */
+    peerDeps?: boolean
+
+    /**
+     * Mark optionalDependencies as external.
+     *
+     * Defaults to `true`.
+     */
+    optDeps?: boolean
+
+    /**
+     * Force include these deps in the list of externals, regardless of other settings.
+     *
+     * Defaults to `[]`
+     */
+    include?: string | RegExp | (string | RegExp)[]
+
+    /**
+     * Force exclude these deps from the list of externals, regardless of other settings.
+     *
+     * Defaults to `[]`
+     */
+    exclude?: string | RegExp | (string | RegExp)[]
+}
+
+type Config = Required<ExternalsOptions>
+
+const defaults: Config = {
+    builtins: true,
+    builtinsPrefix: 'add',
+    packagePath: [],
+    deps: true,
+    devDeps: false,
+    peerDeps: true,
+    optDeps: true,
+    include: [],
+    exclude: []
+}
+
+interface PackageJson {
+    dependencies?:         Record<string, string>
+    devDependencies?:      Record<string, string>
+    peerDependencies?:     Record<string, string>
+    optionalDependencies?: Record<string, string>
+}
+
+function isString(str: unknown): str is string {
+    return typeof str === 'string' && str.length > 0
 }
 
 /**
@@ -42,29 +107,7 @@ function externals(options: ExternalsOptions = {}): Plugin {
     const warnings: string[] = []
 
     // Consolidate options
-    const config: Required<ExternalsOptions> = {
-        builtins: true,
-        builtinsPrefix: 'add',
-        packagePath: [],
-        deps: true,
-        devDeps: true,
-        peerDeps: true,
-        optDeps: true,
-        include: [],
-        exclude: [],
-
-        prefixedBuiltins: 'strip',
-
-        ...options
-    }
-
-    if ('prefixedBuiltins' in options) {
-        warnings.push("The 'prefixedBuiltins' option is now deprecated, " +
-            "please use 'builtinsPrefix' instead to silent this warning.")
-    }
-    else if ('builtinsPrefix' in options) {
-        config.prefixedBuiltins = options.builtinsPrefix
-    }
+    const config: Config = Object.assign(Object.create(defaults), options)
 
     // Map the include and exclude options to arrays of regexes.
     const [ include, exclude ] = [ 'include', 'exclude' ].map(option =>
@@ -82,85 +125,106 @@ function externals(options: ExternalsOptions = {}): Plugin {
             }, [] as RegExp[])
     )
 
-    // A filter function to keep only non excluded dependencies.
-    const isNotExcluded = (id: string) => !exclude.some(rx => rx.test(id))
-
-    // The array of the final regexes.
-    let externals: RegExp[] = []
-    const isExternal = (id: string) => externals.some(rx => rx.test(id))
-
-    // Support for builtin modules.
-    const builtins: Set<string> = new Set(),
-        alwaysSchemed: Set<string> = new Set()
-    if (config.builtins) {
-        const filtered = builtinModules.filter(b => isNotExcluded(b) && isNotExcluded('node:' + b))
-        for (const builtin of filtered) {
-            builtins.add(builtin)
-            if (builtin.startsWith('node:'))
-                alwaysSchemed.add(builtin)
-            else
-                builtins.add('node:' + builtin)
-        }
+    // Prepare node built-in modules lists.
+    const nodePrefixRx = /^node:/
+    const builtins = {
+        all: new Set([
+            ...builtinModules,
+            ...builtinModules.map(mod => 'node:' + mod.replace(nodePrefixRx, ''))
+        ]),
+        alwaysPrefixed: new Set(
+            builtinModules.filter(mod => nodePrefixRx.test(mod))
+        )
     }
+
+    // Prepare npm dependencies lists.
+    if (config.deps || config.devDeps || config.peerDeps || config.optDeps) {
+
+        const packagePaths: string[] = Array.isArray(config.packagePath)
+            ? config.packagePath.filter(isString)
+            : isString(config.packagePath)
+                ? [ config.packagePath ]
+                : []
+
+        // Get all package.json files from cwd up to the root of the git repo
+        // or the root of the volume, whichever comes first.
+        if (packagePaths.length === 0) {
+            let cwd = process.cwd()
+            for (;;) {
+                let name = path.join(cwd, 'package.json')
+                if (fs.statSync(name, { throwIfNoEntry: false })?.isFile())
+                    packagePaths.push(name)
+
+                name = path.join(cwd, '.git')
+                if (fs.statSync(name, { throwIfNoEntry: false })?.isDirectory())
+                    break
+
+                const parent = path.dirname(cwd)
+                if (parent === cwd)
+                    break
+                cwd = parent
+            }
+            console.log('packagePaths: ', packagePaths)
+        }
+
+        const dependencies: Record<string, string> = {}
+        for (const packagePath of packagePaths) {
+            try {
+                const pkg = JSON.parse(fs.readFileSync(packagePath).toString()) as PackageJson
+                Object.assign(dependencies,
+                    config.deps     && pkg.dependencies,
+                    config.devDeps  && pkg.devDependencies,
+                    config.peerDeps && pkg.peerDependencies,
+                    config.optDeps  && pkg.optionalDependencies
+                )
+            }
+            catch {}
+        }
+
+        const names = Object.keys(dependencies)
+        if (names.length > 0)
+            include.push(new RegExp('^(?:' + names.join('|') + ')(?:/.+)?$'))
+    }
+
+    console.log('include: ', include)
+    console.log('exclude: ', exclude)
+
+    const isIncluded = (id: string) => include.some(rx => rx.test(id))
+    const isExcluded = (id: string) => exclude.some(rx => rx.test(id))
 
     return {
         name: 'node-externals',
 
         async buildStart() {
 
-            // Begin with the include option as it has precedence over the other options.
-            externals = [ ...include ]
-
-            // Find and filter dependencies, supporting potential import from a sub directory (e.g. 'lodash/map').
-            const packagePaths: string[] = ([] as string[]).concat(config.packagePath)
-            const dependencies = (await findDependencies({
-                packagePaths: packagePaths.length > 0 ? packagePaths : findPackagePaths(),
-                keys: [
-                    config.deps     && 'dependencies',
-                    config.devDeps  && 'devDependencies',
-                    config.peerDeps && 'peerDependencies',
-                    config.optDeps  && 'optionalDependencies'
-                ].filter(Boolean) as string[],
-                warnings
-            })).filter(isNotExcluded)
-
-            if (dependencies.length > 0) {
-                externals.push(new RegExp('^(?:' + dependencies.join('|') + ')(?:/.+)?$'))
-            }
-
-            // Issue the warnings we may have collected.
+            // Simply issue the warnings we may have collected earlier.
             let warning: string | undefined
-            while ((warning = warnings.shift())) {
+            while (warning = warnings.shift()) {
                 this.warn(warning)
             }
         },
 
-        resolveId(importee) {
+        async resolveId(id) {
 
             // Ignore already resolved ids, relative imports and virtual modules.
-            if (path.isAbsolute(importee) || /^(?:\0|\.{1,2}[\\/])/.test(importee))
+            if (path.isAbsolute(id) || /^(?:\0|\.{1,2}[\\/])/.test(id))
                 return null
 
-            // Handle builtins first.
-            if (alwaysSchemed.has(importee))
-                return false
-
-            if (builtins.has(importee)) {
-                if (config.prefixedBuiltins === false)
-                    return false
-
-                const stripped = importee.replace(/^node:/, '')
-                const prefixed = 'node:' + stripped
-
-                return config.prefixedBuiltins === 'strip'
-                    ? { id: stripped, external: true }
-                    : { id: prefixed, external: true }
+            // Handle builtins.
+            if (builtins.all.has(id) && config.builtins) {
+                const stripped = id.replace(nodePrefixRx, '')
+                return {
+                    id: config.builtinsPrefix === 'add' || builtins.alwaysPrefixed.has(id)
+                        ? 'node:' + stripped
+                        : stripped,
+                    external: !isExcluded(id)
+                }
             }
 
-            // Handle dependencies.
-            return isExternal(importee) && isNotExcluded(importee)
-                ? false
-                : null
+            // Handle npm dependencies.
+            return isIncluded(id) && !isExcluded(id)
+                ? false     // external
+                : null      // normal handling
         }
     }
 }

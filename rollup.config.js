@@ -7,9 +7,7 @@ import { defineConfig } from 'rollup'
 
 import pkg from './package.json'
 
-/**
- * @type { () => import('rollup').Plugin }
- */
+/** @type { import('rollup').PluginImpl } */
 function packageType() {
     return {
         name: 'package-type',
