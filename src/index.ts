@@ -72,9 +72,28 @@ export interface ExternalsOptions {
     exclude?: string | RegExp | (string | RegExp)[]
 }
 
-type Config = Required<ExternalsOptions>
+// Listing only fields of interest in package.json
+interface PackageJson {
+    dependencies?:         Record<string, string>
+    devDependencies?:      Record<string, string>
+    peerDependencies?:     Record<string, string>
+    optionalDependencies?: Record<string, string>
+}
 
-const defaults: Config = {
+// Prepare node built-in modules lists.
+const nodePrefixRx = /^node:/
+const builtins = {
+    all: new Set([
+        ...builtinModules,
+        ...builtinModules.map(mod => 'node:' + mod.replace(nodePrefixRx, ''))
+    ]),
+    alwaysPrefixed: new Set(
+        builtinModules.filter(mod => nodePrefixRx.test(mod))
+    )
+}
+
+// Our defaults
+const defaults: Required<ExternalsOptions> = {
     builtins: true,
     builtinsPrefix: 'add',
     packagePath: [],
@@ -86,16 +105,8 @@ const defaults: Config = {
     exclude: []
 }
 
-interface PackageJson {
-    dependencies?:         Record<string, string>
-    devDependencies?:      Record<string, string>
-    peerDependencies?:     Record<string, string>
-    optionalDependencies?: Record<string, string>
-}
-
-function isString(str: unknown): str is string {
-    return typeof str === 'string' && str.length > 0
-}
+const isString = (str: unknown): str is string =>
+    typeof str === 'string' && str.length > 0
 
 /**
  * A Rollup plugin that automatically declares NodeJS built-in modules,
@@ -107,7 +118,7 @@ function externals(options: ExternalsOptions = {}): Plugin {
     const warnings: string[] = []
 
     // Consolidate options
-    const config: Config = Object.assign(Object.create(defaults), options)
+    const config: typeof defaults = Object.assign(Object.create(defaults), options)
 
     // Map the include and exclude options to arrays of regexes.
     const [ include, exclude ] = [ 'include', 'exclude' ].map(option =>
@@ -124,18 +135,6 @@ function externals(options: ExternalsOptions = {}): Plugin {
                 return result
             }, [] as RegExp[])
     )
-
-    // Prepare node built-in modules lists.
-    const nodePrefixRx = /^node:/
-    const builtins = {
-        all: new Set([
-            ...builtinModules,
-            ...builtinModules.map(mod => 'node:' + mod.replace(nodePrefixRx, ''))
-        ]),
-        alwaysPrefixed: new Set(
-            builtinModules.filter(mod => nodePrefixRx.test(mod))
-        )
-    }
 
     // Prepare npm dependencies lists.
     if (config.deps || config.devDeps || config.peerDeps || config.optDeps) {
@@ -164,13 +163,13 @@ function externals(options: ExternalsOptions = {}): Plugin {
                     break
                 cwd = parent
             }
-            console.log('packagePaths: ', packagePaths)
         }
 
         const dependencies: Record<string, string> = {}
         for (const packagePath of packagePaths) {
+            let pkg: PackageJson | null = null
             try {
-                const pkg = JSON.parse(fs.readFileSync(packagePath).toString()) as PackageJson
+                pkg = JSON.parse(fs.readFileSync(packagePath).toString()) as PackageJson
                 Object.assign(dependencies,
                     config.deps     && pkg.dependencies,
                     config.devDeps  && pkg.devDependencies,
@@ -178,16 +177,18 @@ function externals(options: ExternalsOptions = {}): Plugin {
                     config.optDeps  && pkg.optionalDependencies
                 )
             }
-            catch {}
+            catch {
+                if (pkg)
+                    warnings.push(`File ${JSON.stringify(packagePath)} does not look like a valid package.json.`)
+                else if (config.packagePath.length) // string or array
+                    warnings.push(`Cannot read file ${JSON.stringify(packagePath)}`)
+            }
         }
 
         const names = Object.keys(dependencies)
         if (names.length > 0)
             include.push(new RegExp('^(?:' + names.join('|') + ')(?:/.+)?$'))
     }
-
-    console.log('include: ', include)
-    console.log('exclude: ', exclude)
 
     const isIncluded = (id: string) => include.some(rx => rx.test(id))
     const isExcluded = (id: string) => exclude.some(rx => rx.test(id))
@@ -198,26 +199,24 @@ function externals(options: ExternalsOptions = {}): Plugin {
         async buildStart() {
 
             // Simply issue the warnings we may have collected earlier.
-            let warning: string | undefined
-            while (warning = warnings.shift()) {
-                this.warn(warning)
-            }
+            while (warnings.length > 0)
+                this.warn(warnings.shift()!)
         },
 
         async resolveId(id) {
 
-            // Ignore already resolved ids, relative imports and virtual modules.
+            // Let Rollup handle already resolved ids, relative imports and virtual modules.
             if (path.isAbsolute(id) || /^(?:\0|\.{1,2}[\\/])/.test(id))
                 return null
 
-            // Handle builtins.
-            if (builtins.all.has(id) && config.builtins) {
+            // Handle node builtins.
+            if (builtins.all.has(id)) {
                 const stripped = id.replace(nodePrefixRx, '')
                 return {
                     id: config.builtinsPrefix === 'add' || builtins.alwaysPrefixed.has(id)
                         ? 'node:' + stripped
                         : stripped,
-                    external: !isExcluded(id)
+                    external: config.builtins && !isExcluded(id)
                 }
             }
 

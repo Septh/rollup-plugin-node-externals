@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "simple_dep": "0.0.0"
+  },
+  "devDependencies": {
+    "simple_dev_dev": "0.0.0"
+  }
+}

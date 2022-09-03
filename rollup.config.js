@@ -1,11 +1,17 @@
 // @ts-check
-import { normalize } from 'path'
+import { builtinModules } from 'node:module'
+import { normalize } from 'node:path'
 import nodeResolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
 import typescript from 'rollup-plugin-ts'
 import { defineConfig } from 'rollup'
 
 import pkg from './package.json'
+
+const builtins = new Set([
+    ...builtinModules,
+    ...builtinModules.map(m => `node:${m}`)
+])
 
 /** @type { import('rollup').PluginImpl } */
 function packageType() {
@@ -17,7 +23,7 @@ function packageType() {
                 this.emitFile({
                     type: 'asset',
                     fileName: 'package.json',
-                    source: JSON.stringify({ type }, undefined, 2)
+                    source: JSON.stringify({ type })
                 })
             }
         }
@@ -30,15 +36,18 @@ export default defineConfig({
         {
             file: pkg.main,
             format: 'commonjs',
-            interop: 'default',
+            interop: id => id && builtins.has(id) ? false : 'auto',
+            generatedCode: {
+                preset: 'es2015',
+                symbols: false
+            },
+            esModule: false,
+            exports: 'named',
             sourcemap: true,
-            generatedCode: 'es2015',
-            exports: 'named'
         },
         {
             file: pkg.module,
             format: 'module',
-            interop: 'default',
             sourcemap: true,
             generatedCode: 'es2015'
         }
@@ -52,6 +61,5 @@ export default defineConfig({
             }
         }),
         packageType()
-    ],
-    external: Object.keys(pkg.dependencies) // nodeResolve will take care of builtins
+    ]
 })
