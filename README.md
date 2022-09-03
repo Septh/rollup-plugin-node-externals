@@ -3,10 +3,11 @@ A Rollup plugin that automatically declares NodeJS built-in modules as `external
 
 Works in monorepos too!
 
-> ## Breaking changes in version 4
-> - In previous versions, the `deps` option (see below) defaulted to `false`.<br>This was practical, but often wrong: when bundling for distribution, you want your own dependencies to be installed by the package manager alongside your package, so they should not be bundled in the code. Therefore, the `deps` option now defaults to `true`.
-> - Now requires Node 14 (up from Node 12 for previous versions).
-> - Now has a _peer dependency_ on Rollup ^2.60.0.
+> ## Breaking changes in version 5
+> - In previous versions, the `devDeps` option (see below) defaulted to `true`.<br>This was practical, but often wrong: devDependencies are ment just for that: being used when developping. Therefore, the `devDeps` option now defaults to `false`, meaning Rollup will include them in your bundle.
+>- As anticipated since v4, the `builtinsPrefix` option now defaults to `'add'`.
+>- The deprecated `prefixedBuiltins` option has been removed.
+> - `rollup-plugin-node-externals` no longer depends on the Find Up package. While this is not a breaking change per se, it can be in some edge situations.
 
 ## Why you need this
 <details><summary>(click to expand)</summary>
@@ -29,17 +30,19 @@ npm install --save-dev rollup-plugin-node-externals
 ```
 
 ## Usage
-- To bundle a package that depends on other packages **at runtime**, the built-in defaults are just what you need:
+When bundling an application or library, you want to have your **runtime dependencies** listed under `dependencies` in `package.json`, and **development dependencies** listed under `devDependencies`.
+
+If you follow this simple rule, then the built-in defaults are just what you need:
 ```js
 export default {
   ...
   plugins: [
-    externals(),  // Make all Node builtins and all dependencies external
+    externals(),
   ]
 }
 ```
 
-- To bundle _a standalone package_:
+- Or, if you'd rather bundle dependencies in:
 ```js
 export default {
   ...
@@ -51,20 +54,6 @@ export default {
 }
 ```
 
-- You may also want to bundle some libraries with your code but still `import`/`require` others at runtime. In that case, you could use something like:
-```js
-export default {
-  ...
-  plugins: [
-    externals({
-      deps: true,     // Regular dependencies are external
-      devDeps: false  // devDependencies will be bundled in
-    }),
-  ]
-}
-```
-
-
 ### Options
 All options are, well, optional.
 
@@ -75,35 +64,30 @@ export default {
   ...
   plugins: [
     externals({
+
       // Make node builtins external. Default: true.
-      builtins?: boolean,
+      builtins?: boolean
 
-      // node: prefix handing for importing Node builtins.
-      // Default: 'strip' (will be 'add' in next major).
-      builtinsPrefix?: 'add' | 'strip',
-
-      // DEPRECATED. Will be removed in next major.
-      // Please use builtinsPrefix instead (see above).
-      // Default: 'strip'
-      prefixedBuiltins?: boolean | 'strip' | 'add',
+      // node: prefix handing for importing Node builtins. Default: 'add'.
+      builtinsPrefix?: 'add' | 'strip'
 
       // The path(s) to your package.json. See below for default.
-      packagePath?: string | string[],
+      packagePath?: string | string[]
 
       // Make pkg.dependencies external. Default: true.
-      deps?: boolean,
+      deps?: boolean
 
-      // Make pkg.devDependencies external. Default: true.
-      devDeps?: boolean,
+      // Make pkg.devDependencies external. Default: false.
+      devDeps?: boolean
 
       // Make pkg.peerDependencies external. Default: true.
-      peerDeps?: boolean,
+      peerDeps?: boolean
 
       // Make pkg.optionalDependencies external. Default: true.
-      optDeps?: boolean,
+      optDeps?: boolean
 
       // Modules to force include in externals. Default: [].
-      include?: string | RegExp | (string | RegExp)[],
+      include?: string | RegExp | (string | RegExp)[]
 
       // Modules to force exclude from externals. Default: [].
       exclude?: string | RegExp | (string | RegExp)[]
@@ -115,24 +99,17 @@ export default {
 #### builtins?: boolean = true
 Set the `builtins` option to `false` if you'd like to use some shims/polyfills for those. You'll most certainly need [an other plugin](https://github.com/ionic-team/rollup-plugin-node-polyfills) for this.
 
-#### builtinsPrefix?: 'add' | 'strip' = 'strip'
-How to handle the `node:` scheme used in recent versions of Node (i.e., `import path from 'node:path'`).
+#### builtinsPrefix?: 'add' | 'strip' = 'add'
+How to handle the `node:` scheme used in recent versions of Node (i.e., `import path from 'node:path'`).<br>
+_Note that prefix handling is independant of the `builtins` options being enabled or disabled._
+- If `add` (the default), the `node:` prefix is always added. In effect, this homogenizes all your imports of node builtins to their prefixed version.
 - If `strip` (the default), the import is always resolved unprefixed. In effect, this homogenizes all your imports of node builtins to their unprefixed version.
-- If `add`, the `node:` prefix is always added. In effect, this homogenizes all your imports of node builtins to their prefixed version.<br>
-_Note: `'add'` will be the default for this option in the next major release of this plugin._
-
-#### [DEPRECATED] prefixedBuiltins?: boolean | 'add' | 'strip' = 'strip'
-How to handle the `node:` scheme used in recent versions of Node (i.e., `import path from 'node:path'`).
-- If `strip` (the default), the import is always resolved unprefixed. In effect, this homogenizes all your imports of node builtins to their unprefixed version.
-- If `add`, the `node:` prefix is always added. In effect, this homogenizes all your imports of node builtins to their prefixed version.<br>
-- If `false`, the import is used as-is, meaning that `'node:path'` and `'path'` are considered two distincts imports. **This may cause redundant imports in your final code if you (or your dependencies) are mixing prefixed and unprefixed imports.**<br>
-- `true` is the same as `add`.<br>
 
 #### packagePath?: string | string[] = []
 If you're working with monorepos, the `packagePath` option is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all package.json files in parent directories recursively until either the root git directory is reached or until no other package.json can be found.
 
 #### deps?: boolean = true
-#### devDeps?: boolean = true
+#### devDeps?: boolean = false
 #### peerDeps?: boolean = true
 #### optDeps?: boolean = true
 Set the `deps`, `devDeps`, `peerDeps` and `optDeps` options to `false` to prevent the corresponding dependencies from being externalized, therefore letting Rollup bundle them with your code.
@@ -173,7 +150,7 @@ externals({
 })
 ```
 
-However, subpath imports are supported with regexes, meaning that `include: /^lodash/` will also externalize `loadash/map`, `lodash/merge`, etc.
+However, subpath imports are supported with regexes, meaning that `include: /^lodash/` will externalize `lodash` and also `lodash/map`, `lodash/merge`, etc.
 
 
 ### 3/ Order matters
