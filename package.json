@@ -34,11 +34,12 @@
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
+    "types": "./dist/index.d.ts",
     "require": "./dist/cjs/index.js",
     "import": "./dist/esm/index.js"
   },
-  "types": "./dist/index.d.ts",
   "files": [
     "dist",
     "!dist/**/*.map"
