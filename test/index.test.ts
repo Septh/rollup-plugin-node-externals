@@ -3,10 +3,17 @@ import fs from 'node:fs/promises'
 import test from 'ava'
 import { testProp, fc } from '@fast-check/ava'
 import { Arbitrary } from 'fast-check'
-import { type Plugin, type PluginContext } from 'rollup'
+import { type NormalizedInputOptions, type CustomPluginOptions, type ResolveIdResult } from 'rollup'
 import externals, { type ExternalsOptions } from '../src/index'
 
-type TestedPlugin = Plugin & PluginContext
+type TestedPlugin = {
+    buildStart: (options: NormalizedInputOptions) => void | Promise<void>
+    resolveId: (source: string, importer?: string, options?: {
+        assertions: Record<string, string>;
+        custom?: CustomPluginOptions;
+        isEntry: boolean;
+    }) => ResolveIdResult | Promise<ResolveIdResult>
+}
 
 // Returns an arbitrary for generating externals options objects
 const externalsOptionsArbitrary = (): Arbitrary<ExternalsOptions> => fc.record({
