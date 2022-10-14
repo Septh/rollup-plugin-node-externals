@@ -6,7 +6,7 @@
 
         // Input
         "lib": [ "es2020" ],
-        "moduleResolution": "node",
+        "moduleResolution": "NodeNext",
         "resolveJsonModule": true,
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
