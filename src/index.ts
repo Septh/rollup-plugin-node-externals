@@ -74,26 +74,38 @@ export interface ExternalsOptions {
 
 // Listing only fields of interest in package.json
 interface PackageJson {
-    dependencies?:         Record<string, string>
-    devDependencies?:      Record<string, string>
-    peerDependencies?:     Record<string, string>
+    dependencies?: Record<string, string>
+    devDependencies?: Record<string, string>
+    peerDependencies?: Record<string, string>
     optionalDependencies?: Record<string, string>
+    workspaces?: string[]
+    packages?: string[]
 }
 
 // Prepare node built-in modules lists.
+const nodePrefix = 'node:'
 const nodePrefixRx = /^node:/
 const builtins = {
-    all: new Set([
-        ...builtinModules,
-        ...builtinModules.map(mod => 'node:' + mod.replace(nodePrefixRx, ''))
-    ]),
+    all: new Set(builtinModules),
     alwaysPrefixed: new Set(
         builtinModules.filter(mod => nodePrefixRx.test(mod))
     )
 }
 
+const workspaceRootFiles = new Set([
+    'pnpm-workspace.yaml',  // pnpm
+    'lerna.json',           // Lerna
+    'workspace.jsonc',      // Bit
+    'nx.json',              // Nx
+    'rush.json',            // Rush
+])
+
 // Our defaults
-const defaults: Required<ExternalsOptions> = {
+type Config = Required<ExternalsOptions> & {
+    invalid?: boolean
+}
+
+const defaults: Config = {
     builtins: true,
     builtinsPrefix: 'add',
     packagePath: [],
@@ -114,11 +126,11 @@ const isString = (str: unknown): str is string =>
  */
 function externals(options: ExternalsOptions = {}): Plugin {
 
-    // This will store all eventual warnings until we can display them.
-    const warnings: string[] = []
+    // This will store all eventual warnings/errors until we can display them.
+    const messages: string[] = []
 
     // Consolidate options
-    const config: typeof defaults = Object.assign(Object.create(defaults), options)
+    const config: Config = Object.assign(Object.create(null), defaults, options)
 
     // Map the include and exclude options to arrays of regexes.
     const [ include, exclude ] = [ 'include', 'exclude' ].map(option =>
@@ -130,7 +142,7 @@ function externals(options: ExternalsOptions = {}): Plugin {
                 else if (typeof entry === 'string')
                     result.push(new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
                 else if (entry) {
-                    warnings.push(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
+                    messages.push(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
                 }
                 return result
             }, [] as RegExp[])
@@ -145,26 +157,29 @@ function externals(options: ExternalsOptions = {}): Plugin {
                 ? [ config.packagePath ]
                 : []
 
-        // Get all package.json files from cwd up to the root of the git repo
-        // or the root of the volume, whichever comes first.
         if (packagePaths.length === 0) {
-            let cwd = process.cwd()
-            for (;;) {
-                let name = path.join(cwd, 'package.json')
-                if (fs.statSync(name, { throwIfNoEntry: false })?.isFile())
-                    packagePaths.push(name)
+            // Get all package.json files from cwd up to the root of the git repo,
+            // the root of the monorepo, or the root of the volume, whichever comes first.
+            for (
+                let current = process.cwd(), previous: string | null = null;
+                previous !== current;
+                previous = current, current = path.dirname(current)
+            ) {
+                const entries = fs.readdirSync(current, { withFileTypes: true })
 
-                name = path.join(cwd, '.git')
-                if (fs.statSync(name, { throwIfNoEntry: false })?.isDirectory())
-                    break
+                if (entries.some(entry => entry.name === 'package.json' && entry.isFile()))
+                    packagePaths.push(path.join(current, 'package.json'))
 
-                const parent = path.dirname(cwd)
-                if (parent === cwd)
+                if (entries.some(entry =>
+                    (workspaceRootFiles.has(entry.name) && entry.isFile()) ||
+                    (entry.name === '.git' && entry.isDirectory())
+                )) {
                     break
-                cwd = parent
+                }
             }
         }
 
+        // Gather dependencies names.
         const dependencies: Record<string, string> = {}
         for (const packagePath of packagePaths) {
             let pkg: PackageJson | null = null
@@ -176,12 +191,17 @@ function externals(options: ExternalsOptions = {}): Plugin {
                     config.peerDeps && pkg.peerDependencies,
                     config.optDeps  && pkg.optionalDependencies
                 )
+
+                // Stop here if this is a npm/yarn workspace root
+                if (pkg.workspaces || pkg.packages)
+                    break
             }
             catch {
+                config.invalid = true
                 if (pkg)
-                    warnings.push(`File ${JSON.stringify(packagePath)} does not look like a valid package.json.`)
+                    messages.push(`File ${JSON.stringify(packagePath)} does not look like a valid package.json.`)
                 else if (config.packagePath.length) // string or array
-                    warnings.push(`Cannot read file ${JSON.stringify(packagePath)}`)
+                    messages.push(`Cannot read file ${JSON.stringify(packagePath)}`)
             }
         }
 
@@ -197,10 +217,15 @@ function externals(options: ExternalsOptions = {}): Plugin {
         name: 'node-externals',
 
         async buildStart() {
+            // Bail out if there was an error.
+            if (config.invalid)
+                this.error(messages[0])
 
-            // Simply issue the warnings we may have collected earlier.
-            while (warnings.length > 0)
-                this.warn(warnings.shift()!)
+            // Otherwise issue any warnings we may have collected earlier.
+            while (messages.length > 0) {
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                this.warn(messages.shift()!)
+            }
         },
 
         async resolveId(id) {
@@ -210,13 +235,14 @@ function externals(options: ExternalsOptions = {}): Plugin {
                 return null
 
             // Handle node builtins.
-            if (builtins.all.has(id)) {
+            if (id.startsWith(nodePrefix) || builtins.all.has(id)) {
                 const stripped = id.replace(nodePrefixRx, '')
                 return {
                     id: config.builtinsPrefix === 'add' || builtins.alwaysPrefixed.has(id)
-                        ? 'node:' + stripped
+                        ? nodePrefix + stripped
                         : stripped,
-                    external: config.builtins && !isExcluded(id)
+                    external: config.builtins && !isExcluded(id),
+                    moduleSideEffects: false
                 }
             }
 

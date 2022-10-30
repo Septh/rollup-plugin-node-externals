@@ -1,18 +1,13 @@
 // @ts-check
-import { builtinModules } from 'node:module'
-import { fileURLToPath } from 'node:url'
+import { createRequire, builtinModules } from 'node:module'
 import path from 'node:path'
-import fs from 'node:fs/promises'
 import nodeResolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
 import typescript from 'rollup-plugin-ts'
 import { defineConfig } from 'rollup'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname  = path.dirname(__filename)
-
 /** @type { import('./package.json') } */
-const pkg = JSON.parse(await fs.readFile(path.resolve(__dirname, './package.json'), 'utf-8'))
+const pkg = createRequire(import.meta.url)('./package.json')
 
 const builtins = new Set(builtinModules)
 
@@ -39,8 +34,7 @@ const sharedOutputOptions = {
         preset: 'es2015',
         symbols: false,
     },
-    esModule: false,
-    exports: 'named',
+    freeze: false,
     sourcemap: true,
     plugins: [
         packageType()
@@ -54,10 +48,16 @@ export default defineConfig({
             format: 'commonjs',
             file: pkg.exports.require,
             interop: id => id && (id.startsWith('node:') || builtins.has(id)) ? 'default' : 'auto',
-            ...sharedOutputOptions
+            esModule: false,
+            exports: 'named',
+            ...sharedOutputOptions,
+
+            // Using the same technique as rollup/plugins
+            // (see https://github.com/rollup/plugins/blob/a87282241be1ab5059ed8cffae24d01660fae07d/shared/rollup.config.mjs#L28)
+            footer: 'module.exports = Object.assign(exports.default, exports);',
         },
         {
-            format: 'module',
+            format: 'esm',
             file: pkg.exports.import,
             ...sharedOutputOptions
         }
@@ -67,7 +67,7 @@ export default defineConfig({
         commonjs(),
         typescript({
             hook: {
-                outputPath: (_path, kind) => kind === 'declaration' ? path.normalize(pkg.exports.types) : undefined
+                outputPath: (_, kind) => kind === 'declaration' ? path.normalize(pkg.exports.types) : undefined
             }
         })
     ]

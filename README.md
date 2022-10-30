@@ -3,11 +3,17 @@ A Rollup plugin that automatically declares NodeJS built-in modules as `external
 
 Works in monorepos too!
 
-> ## Breaking changes in version 5
-> - In previous versions, the `devDeps` option (see below) defaulted to `true`.<br>This was practical, but often wrong: devDependencies are ment just for that: being used when developping. Therefore, the `devDeps` option now defaults to `false`, meaning Rollup will include them in your bundle.
+> ### Breaking changes in version 5
+> - In previous versions, the `devDeps` option (see below) defaulted to `true`.<br>This was practical, but often wrong: devDependencies are meant just for that: being used when developping. Therefore, the `devDeps` option now defaults to `false`, meaning Rollup will include them in your bundle.
 >- As anticipated since v4, the `builtinsPrefix` option now defaults to `'add'`.
 >- The deprecated `prefixedBuiltins` option has been removed.
-> - `rollup-plugin-node-externals` no longer depends on the Find Up package. While this is not a breaking change per se, it can be in some edge situations.
+> - `rollup-plugin-node-externals` no longer depends on the Find-Up package (while this is not a breaking change per se, it can be in some edge situations).
+> - Now has a _peer dependency_ on `rollup ^2.60.0 || ^3.0.0`.
+
+> ### Breaking changes in version 4
+> - In previous versions, the `deps` option (see below) defaulted to `false`.<br>This was practical, but often wrong: when bundling for distribution, you want your own dependencies to be installed by the package manager alongside your package, so they should not be bundled in the code. Therefore, the `deps` option now defaults to `true`.
+> - Now requires Node 14 (up from Node 12 for previous versions).
+> - Now has a _peer dependency_ on `rollup ^2.60.0`.
 
 ## Why you need this
 <details><summary>(click to expand)</summary>
@@ -101,9 +107,9 @@ Set the `builtins` option to `false` if you'd like to use some shims/polyfills f
 
 #### builtinsPrefix?: 'add' | 'strip' = 'add'
 How to handle the `node:` scheme used in recent versions of Node (i.e., `import path from 'node:path'`).<br>
-_Note that prefix handling is independant of the `builtins` options being enabled or disabled._
 - If `add` (the default), the `node:` prefix is always added. In effect, this homogenizes all your imports of node builtins to their prefixed version.
 - If `strip` (the default), the import is always resolved unprefixed. In effect, this homogenizes all your imports of node builtins to their unprefixed version.
+> _Note that prefix handling is independant of the `builtins` options being enabled or disabled._
 
 #### packagePath?: string | string[] = []
 If you're working with monorepos, the `packagePath` option is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all package.json files in parent directories recursively until either the root git directory is reached or until no other package.json can be found.

@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "express": "4.17.1"
+  },
+  "workspaces": [
+    "./one", "./two"
+  ]
+}
