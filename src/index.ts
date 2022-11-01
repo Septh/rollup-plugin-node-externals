@@ -95,9 +95,10 @@ const builtins = {
 const workspaceRootFiles = new Set([
     'pnpm-workspace.yaml',  // pnpm
     'lerna.json',           // Lerna
-    'workspace.jsonc',      // Bit
-    'nx.json',              // Nx
-    'rush.json',            // Rush
+    // Note: is there any interest in the following?
+    // 'workspace.jsonc',      // Bit
+    // 'nx.json',              // Nx
+    // 'rush.json',            // Rush
 ])
 
 // Our defaults
@@ -126,16 +127,16 @@ const isString = (str: unknown): str is string =>
  */
 function externals(options: ExternalsOptions = {}): Plugin {
 
-    // This will store all eventual warnings/errors until we can display them.
+    // This will store all eventual errors/warnings until we can display them.
     const messages: string[] = []
 
     // Consolidate options
     const config: Config = Object.assign(Object.create(null), defaults, options)
 
     // Map the include and exclude options to arrays of regexes.
-    const [ include, exclude ] = [ 'include', 'exclude' ].map(option =>
+    const [ include, exclude ] = ([ 'include', 'exclude' ] as const).map(option =>
         ([] as (string | RegExp)[])
-            .concat(config[ option as 'include' | 'exclude' ])
+            .concat(config[option])
             .reduce((result, entry, index) => {
                 if (entry instanceof RegExp)
                     result.push(entry)
@@ -148,7 +149,7 @@ function externals(options: ExternalsOptions = {}): Plugin {
             }, [] as RegExp[])
     )
 
-    // Prepare npm dependencies lists.
+    // Prepare npm dependencies list.
     if (config.deps || config.devDeps || config.peerDeps || config.optDeps) {
 
         const packagePaths: string[] = Array.isArray(config.packagePath)
@@ -158,8 +159,8 @@ function externals(options: ExternalsOptions = {}): Plugin {
                 : []
 
         if (packagePaths.length === 0) {
-            // Get all package.json files from cwd up to the root of the git repo,
-            // the root of the monorepo, or the root of the volume, whichever comes first.
+            // Get all package.json files from cwd up to the root of the monorepo,
+            // the root of the git epo, or the root of the volume, whichever comes first.
             for (
                 let current = process.cwd(), previous: string | null = null;
                 previous !== current;
@@ -170,6 +171,7 @@ function externals(options: ExternalsOptions = {}): Plugin {
                 if (entries.some(entry => entry.name === 'package.json' && entry.isFile()))
                     packagePaths.push(path.join(current, 'package.json'))
 
+                // Break early if there is a pnpm/lerna workspace config file.
                 if (entries.some(entry =>
                     (workspaceRootFiles.has(entry.name) && entry.isFile()) ||
                     (entry.name === '.git' && entry.isDirectory())
@@ -192,16 +194,18 @@ function externals(options: ExternalsOptions = {}): Plugin {
                     config.optDeps  && pkg.optionalDependencies
                 )
 
-                // Stop here if this is a npm/yarn workspace root
-                if (pkg.workspaces || pkg.packages)
+                // Break early if this is a npm/yarn workspace root
+                if ('workspaces' in pkg)
                     break
             }
             catch {
+                messages.push(pkg
+                    ? `File ${JSON.stringify(packagePath)} does not look like a valid package.json file.`
+                    : `Cannot read file ${JSON.stringify(packagePath)}`
+                )
+
                 config.invalid = true
-                if (pkg)
-                    messages.push(`File ${JSON.stringify(packagePath)} does not look like a valid package.json.`)
-                else if (config.packagePath.length) // string or array
-                    messages.push(`Cannot read file ${JSON.stringify(packagePath)}`)
+                break
             }
         }
 
