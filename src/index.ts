@@ -3,6 +3,9 @@ import fs from 'node:fs'
 import { builtinModules } from 'node:module'
 import type { Plugin } from 'rollup'
 
+type MaybeFalsy<T> = T | undefined | null | false
+type MaybeArray<T> = T | T[]
+
 export interface ExternalsOptions {
 
     /**
@@ -62,14 +65,14 @@ export interface ExternalsOptions {
      *
      * Defaults to `[]`
      */
-    include?: string | RegExp | (string | RegExp)[]
+    include?: MaybeArray<MaybeFalsy<string | RegExp>>
 
     /**
      * Force exclude these deps from the list of externals, regardless of other settings.
      *
      * Defaults to `[]`
      */
-    exclude?: string | RegExp | (string | RegExp)[]
+    exclude?: MaybeArray<MaybeFalsy<string | RegExp>>
 }
 
 // Listing only fields of interest in package.json
@@ -135,7 +138,7 @@ function externals(options: ExternalsOptions = {}): Plugin {
 
     // Map the include and exclude options to arrays of regexes.
     const [ include, exclude ] = ([ 'include', 'exclude' ] as const).map(option =>
-        ([] as (string | RegExp)[])
+        ([] as (string | RegExp | null | undefined | false)[])
             .concat(config[option])
             .reduce((result, entry, index) => {
                 if (entry instanceof RegExp)
@@ -158,9 +161,10 @@ function externals(options: ExternalsOptions = {}): Plugin {
                 ? [ config.packagePath ]
                 : []
 
+        // Populate packagePaths if not given by getting all package.json files
+        // from cwd up to the root of the monorepo, the root of the git repo,
+        // or the root of the volume, whichever comes first.
         if (packagePaths.length === 0) {
-            // Get all package.json files from cwd up to the root of the monorepo,
-            // the root of the git epo, or the root of the volume, whichever comes first.
             for (
                 let current = process.cwd(), previous: string | null = null;
                 previous !== current;
@@ -194,8 +198,8 @@ function externals(options: ExternalsOptions = {}): Plugin {
                     config.optDeps  && pkg.optionalDependencies
                 )
 
-                // Break early if this is a npm/yarn workspace root
-                if ('workspaces' in pkg)
+                // Break early if this is a npm/yarn workspace root.
+                if ('workspaces' in pkg || 'packages' in pkg)
                     break
             }
             catch {
