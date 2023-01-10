@@ -1,10 +1,9 @@
-// @ts-check
 import { createRequire, builtinModules } from 'node:module'
 import path from 'node:path'
+import { defineConfig } from 'rollup'
 import nodeResolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
 import typescript from 'rollup-plugin-ts'
-import { defineConfig } from 'rollup'
 
 /** @type { import('./package.json') } */
 const pkg = createRequire(import.meta.url)('./package.json')
@@ -30,11 +29,6 @@ function packageType() {
 
 /** @type { import('rollup').OutputOptions } */
 const sharedOutputOptions = {
-    generatedCode: {
-        preset: 'es2015',
-        symbols: false,
-    },
-    freeze: false,
     sourcemap: true,
     plugins: [
         packageType()
@@ -47,8 +41,12 @@ export default defineConfig({
         {
             format: 'commonjs',
             file: pkg.exports.require,
-            interop: id => id && (id.startsWith('node:') || builtins.has(id)) ? 'default' : 'auto',
+            generatedCode: {
+                preset: 'es2015',
+                symbols: false,
+            },
             esModule: false,
+            freeze: false,
             exports: 'named',
             ...sharedOutputOptions,
 
