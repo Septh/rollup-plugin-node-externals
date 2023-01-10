@@ -1,5 +1,5 @@
 import path from 'node:path'
-import fs from 'node:fs'
+import fs from 'node:fs/promises'
 import { builtinModules } from 'node:module'
 import type { Plugin } from 'rollup'
 
@@ -63,14 +63,14 @@ export interface ExternalsOptions {
     /**
      * Force include these deps in the list of externals, regardless of other settings.
      *
-     * Defaults to `[]`
+     * Defaults to `[]` (force include nothing)
      */
     include?: MaybeArray<MaybeFalsy<string | RegExp>>
 
     /**
      * Force exclude these deps from the list of externals, regardless of other settings.
      *
-     * Defaults to `[]`
+     * Defaults to `[]` (force exclude nothing)
      */
     exclude?: MaybeArray<MaybeFalsy<string | RegExp>>
 }
@@ -105,9 +105,7 @@ const workspaceRootFiles = new Set([
 ])
 
 // Our defaults
-type Config = Required<ExternalsOptions> & {
-    invalid?: boolean
-}
+type Config = Required<ExternalsOptions>
 
 const defaults: Config = {
     builtins: true,
@@ -130,93 +128,27 @@ const isString = (str: unknown): str is string =>
  */
 function externals(options: ExternalsOptions = {}): Plugin {
 
-    // This will store all eventual errors/warnings until we can display them.
-    const messages: string[] = []
-
     // Consolidate options
     const config: Config = Object.assign(Object.create(null), defaults, options)
 
     // Map the include and exclude options to arrays of regexes.
+    const warnings: string[] = []
     const [ include, exclude ] = ([ 'include', 'exclude' ] as const).map(option =>
         ([] as (string | RegExp | null | undefined | false)[])
             .concat(config[option])
             .reduce((result, entry, index) => {
-                if (entry instanceof RegExp)
-                    result.push(entry)
-                else if (typeof entry === 'string')
-                    result.push(new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
-                else if (entry) {
-                    messages.push(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
+                if (entry) {
+                    if (entry instanceof RegExp)
+                        result.push(entry)
+                    else if (typeof entry === 'string')
+                        result.push(new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
+                    else {
+                        warnings.push(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
+                    }
                 }
                 return result
             }, [] as RegExp[])
     )
-
-    // Prepare npm dependencies list.
-    if (config.deps || config.devDeps || config.peerDeps || config.optDeps) {
-
-        const packagePaths: string[] = Array.isArray(config.packagePath)
-            ? config.packagePath.filter(isString)
-            : isString(config.packagePath)
-                ? [ config.packagePath ]
-                : []
-
-        // Populate packagePaths if not given by getting all package.json files
-        // from cwd up to the root of the monorepo, the root of the git repo,
-        // or the root of the volume, whichever comes first.
-        if (packagePaths.length === 0) {
-            for (
-                let current = process.cwd(), previous: string | null = null;
-                previous !== current;
-                previous = current, current = path.dirname(current)
-            ) {
-                const entries = fs.readdirSync(current, { withFileTypes: true })
-
-                if (entries.some(entry => entry.name === 'package.json' && entry.isFile()))
-                    packagePaths.push(path.join(current, 'package.json'))
-
-                // Break early if there is a pnpm/lerna workspace config file.
-                if (entries.some(entry =>
-                    (workspaceRootFiles.has(entry.name) && entry.isFile()) ||
-                    (entry.name === '.git' && entry.isDirectory())
-                )) {
-                    break
-                }
-            }
-        }
-
-        // Gather dependencies names.
-        const dependencies: Record<string, string> = {}
-        for (const packagePath of packagePaths) {
-            let pkg: PackageJson | null = null
-            try {
-                pkg = JSON.parse(fs.readFileSync(packagePath).toString()) as PackageJson
-                Object.assign(dependencies,
-                    config.deps     && pkg.dependencies,
-                    config.devDeps  && pkg.devDependencies,
-                    config.peerDeps && pkg.peerDependencies,
-                    config.optDeps  && pkg.optionalDependencies
-                )
-
-                // Break early if this is a npm/yarn workspace root.
-                if ('workspaces' in pkg || 'packages' in pkg)
-                    break
-            }
-            catch {
-                messages.push(pkg
-                    ? `File ${JSON.stringify(packagePath)} does not look like a valid package.json file.`
-                    : `Cannot read file ${JSON.stringify(packagePath)}`
-                )
-
-                config.invalid = true
-                break
-            }
-        }
-
-        const names = Object.keys(dependencies)
-        if (names.length > 0)
-            include.push(new RegExp('^(?:' + names.join('|') + ')(?:/.+)?$'))
-    }
 
     const isIncluded = (id: string) => include.some(rx => rx.test(id))
     const isExcluded = (id: string) => exclude.some(rx => rx.test(id))
@@ -225,21 +157,88 @@ function externals(options: ExternalsOptions = {}): Plugin {
         name: 'node-externals',
 
         async buildStart() {
-            // Bail out if there was an error.
-            if (config.invalid)
-                this.error(messages[0])
-
-            // Otherwise issue any warnings we may have collected earlier.
-            while (messages.length > 0) {
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                this.warn(messages.shift()!)
+            // Issue any warnings we may have collected earlier.
+            while (warnings.length > 0) {
+                this.warn(warnings.shift()!)    // eslint-disable-line @typescript-eslint/no-non-null-assertion
             }
+
+            // Prepare npm dependencies list.
+            const packageFiles: string[] = Array.isArray(config.packagePath)
+                ? config.packagePath.filter(isString)
+                : isString(config.packagePath)
+                    ? [ config.packagePath ]
+                    : []
+
+            // Populate packagePaths if not given by getting all package.json files
+            // from cwd up to the root of the git repo, the root of the monorepo,
+            // or the root of the volume, whichever comes first.
+            if (packageFiles.length === 0) {
+                for (
+                    let current = process.cwd(), previous: string | undefined;
+                    previous !== current;
+                    previous = current, current = path.dirname(current)
+                ) {
+                    const entries = await fs.readdir(current, { withFileTypes: true })
+
+                    if (entries.some(entry => entry.name === 'package.json' && entry.isFile()))
+                        packageFiles.push(path.join(current, 'package.json'))
+
+                    // Break early if this is a git repo root or a pnpm/lerna workspace root.
+                    if (entries.some(entry =>
+                        (entry.name === '.git' && entry.isDirectory()) ||
+                        (workspaceRootFiles.has(entry.name) && entry.isFile())
+                    )) {
+                        break
+                    }
+                }
+            }
+
+            // Gather dependencies names.
+            const dependencies: Record<string, string> = {}
+            for (const packageFile of packageFiles) {
+                try {
+                    const json = (await fs.readFile(packageFile)).toString()
+                    try {
+                        const pkg = JSON.parse(json) as PackageJson
+                        Object.assign(dependencies,
+                            config.deps     ? pkg.dependencies         : undefined,
+                            config.devDeps  ? pkg.devDependencies      : undefined,
+                            config.peerDeps ? pkg.peerDependencies     : undefined,
+                            config.optDeps  ? pkg.optionalDependencies : undefined
+                        )
+
+                        // Watch the file.
+                        if (this.meta.watchMode)
+                            this.addWatchFile(packageFile)
+
+                        // Break early if this is a npm/yarn workspace root.
+                        if ('workspaces' in pkg || 'packages' in pkg)
+                            break
+                    }
+                    catch {
+                        this.error({
+                            message: `File ${JSON.stringify(packageFile)} does not look like a valid package.json file.`,
+                            stack: undefined
+                        })
+                    }
+                }
+                catch {
+                    this.error({
+                        message: `Cannot read file ${JSON.stringify(packageFile)}`,
+                        stack: undefined
+                    })
+                }
+            }
+
+            const names = Object.keys(dependencies)
+            if (names.length > 0)
+                include.push(new RegExp('^(?:' + names.join('|') + ')(?:/.+)?$'))
         },
 
         async resolveId(id) {
 
             // Let Rollup handle already resolved ids, relative imports and virtual modules.
-            if (path.isAbsolute(id) || /^(?:\0|\.{1,2}[\\/])/.test(id))
+            if (/^(?:\0|\.{1,2}[\\/])/.test(id) || path.isAbsolute(id))
                 return null
 
             // Handle node builtins.
