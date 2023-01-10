@@ -44,22 +44,10 @@
     "dist",
     "!dist/**/*.map"
   ],
-  "ava": {
-    "extensions": [
-      "ts"
-    ],
-    "require": [
-      "ts-node/register"
-    ]
-  },
-  "np": {
-    "yarn": false
-  },
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -cw",
-    "test": "ava --no-worker-threads",
-    "watch-tests": "ava --no-worker-threads --watch",
+    "test": "ava",
     "lint": "eslint src/index.ts",
     "clean": "rimraf dist",
     "prepublishOnly": "npm run lint && npm run clean && npm run build"
@@ -82,5 +70,17 @@
   },
   "peerDependencies": {
     "rollup": "^2.60.0 || ^3.0.0"
+  },
+  "ava": {
+    "workerThreads": false,
+    "extensions": [
+      "ts"
+    ],
+    "require": [
+      "ts-node/register"
+    ]
+  },
+  "np": {
+    "yarn": false
   }
 }

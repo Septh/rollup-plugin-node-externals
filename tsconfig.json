@@ -6,10 +6,11 @@
 
         // Input
         "lib": [ "es2020" ],
-        "moduleResolution": "NodeNext",
+        "moduleResolution": "Node16",
         "resolveJsonModule": true,
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
+        "skipDefaultLibCheck": true,
 
         // Output
         "outDir": "out",
@@ -18,7 +19,7 @@
         "declaration": true,
         "declarationMap": false,
         "sourceMap": true,
-        // "stripInternal": true,
+        "stripInternal": true,
 
         // Type checkings
         "strict": true,
@@ -27,6 +28,6 @@
         "noUnusedParameters": false,
         "noPropertyAccessFromIndexSignature": true,
         "noUncheckedIndexedAccess": false,
-        "exactOptionalPropertyTypes": true,
+        // "exactOptionalPropertyTypes": true,
     }
 }

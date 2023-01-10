@@ -1,9 +1,11 @@
-import path from 'node:path'
 import test from 'ava'
 import { testProp, fc } from '@fast-check/ava'
-import { Arbitrary } from 'fast-check'
-import { call, type TestedPlugin } from './_common'
-import externals, { type ExternalsOptions } from '../src/index'
+import type { Arbitrary } from 'fast-check'
+import { initPlugin, callHook, fixture } from './_common'
+import { type ExternalsOptions } from '../src/index'
+
+// Ensures tests use local package.json
+process.chdir(fixture())
 
 // Returns an arbitrary for generating externals options objects
 const externalsOptionsArbitrary = (): Arbitrary<ExternalsOptions> => fc.record({
@@ -21,9 +23,9 @@ const externalsOptionsArbitrary = (): Arbitrary<ExternalsOptions> => fc.record({
 testProp(
     'Does not throw on constructing plugin object for valid input',
     [externalsOptionsArbitrary()],
-    (t, options) => {
+    async (t, options) => {
         try {
-            externals(options)
+            await initPlugin(options, false)
             t.pass()
         }
         catch {
@@ -32,32 +34,56 @@ testProp(
     }
 )
 
-test('Obeys "packagePath" option', async t => {
-    const plugin = externals({
+// Must be serial because it uses the 'warnings' global in _common.ts.
+test.serial("Warns when given invalid include or exclude entry", async t => {
+    const okay = 'some_dep' // string is ok
+    const notOkay = 1       // number is not (unless 0, which is falsy)
+
+    const { warnings } = await initPlugin({
+        include: [ okay, notOkay as any ]
+    })
+
+    t.is(warnings.length, 1)
+    t.is(warnings[0], `Ignoring wrong entry type #1 in 'include' option: ${JSON.stringify(notOkay)}`)
+})
+
+test('Marks dependencies as external by default', async t => {
+    const { plugin } = await initPlugin()
+    t.false(await callHook(plugin, 'resolveId', 'test-dep'))
+})
+
+test('Does NOT mark devDependencies as external by default', async t => {
+    const { plugin } = await initPlugin()
+    t.is(await callHook(plugin, 'resolveId', 'test-dev-dep'), null)
+})
+
+test('Does mark devDependencies as external when using devDeps=true', async t => {
+    const { plugin } = await initPlugin({
+        devDeps: true
+    })
+    t.false(await callHook(plugin, 'resolveId', 'test-dev-dep'))
+})
+
+test("Obeys 'packagePath' option (single file name)", async t => {
+    const { plugin } = await initPlugin({
+        packagePath: '00_simple/package.json'
+    })
+    t.false(await callHook(plugin, 'resolveId', 'simple-dep'))
+})
+
+test("Obeys 'packagePath' option (multiple file names)", async t => {
+    const { plugin } = await initPlugin({
         packagePath: [
-            path.join(__dirname, 'fixtures', 'monorepo', 'package.json'),
-            path.join(__dirname, 'fixtures', 'simple', 'package.json'),
-            path.join(__dirname, 'fixtures', 'test.json')
+            '00_simple/package.json',
+            '01_monorepo/package.json'
         ]
-    }) as TestedPlugin
+    })
 
-    for (const dependency of [ 'chalk', 'simple_dep', 'example' ]) {
-        t.false(await call(plugin.resolveId, dependency))
+    // Should be external
+    for (const dependency of [
+        'simple-dep',   // 00_simple/package.json
+        'chalk',        // 01_monorepo/package.json
+    ]) {
+        t.false(await callHook(plugin, 'resolveId', dependency))
     }
-})
-
-test('Does mark "dependencies" as external by default', async t => {
-    const plugin = externals({
-        packagePath: path.join(__dirname, 'fixtures', 'simple', 'package.json')
-    }) as TestedPlugin
-
-    t.false(await call(plugin.resolveId, 'simple_dep'))
-})
-
-test('Doest NOT mark "devDependencies" as external by default', async t => {
-    const plugin = externals({
-        packagePath: path.join(__dirname, 'fixtures', 'simple', 'package.json')
-    }) as TestedPlugin
-
-    t.is(await call(plugin.resolveId, 'simple_dev_dep'), null)
 })

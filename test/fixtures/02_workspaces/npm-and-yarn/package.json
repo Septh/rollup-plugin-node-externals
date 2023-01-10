@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "express": "4.17.1"
+    "chalk": "*"
   },
   "workspaces": [
     "./one", "./two"
