@@ -131,7 +131,7 @@ function externals(options: ExternalsOptions = {}): Plugin {
     const config: Config = Object.assign(Object.create(null), defaults, options)
     let include: RegExp[],
         exclude: RegExp[]
-    const isIncluded = (id: string) => include.length  === 0 || include.some(rx => rx.test(id))
+    const isIncluded = (id: string) => include.some(rx => rx.test(id))
     const isExcluded = (id: string) => exclude.some(rx => rx.test(id))
 
     return {
@@ -245,7 +245,7 @@ function externals(options: ExternalsOptions = {}): Plugin {
                 }
             }
 
-            // Handle npm dependencies.
+            // Handle other imports.
             return isIncluded(id) && !isExcluded(id)
                 ? false     // external
                 : null      // normal handling
