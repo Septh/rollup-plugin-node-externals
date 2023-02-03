@@ -34,12 +34,11 @@ export async function callHook(plugin: Plugin, hookName: ImplementedHooks, ...ar
     throw new Error('Ooops')
 }
 
-export async function initPlugin(options: ExternalsOptions = {}, doBuildStart: boolean = true): Promise<{ plugin: Plugin, warnings: string[] }> {
+export async function initPlugin(options: ExternalsOptions = {}): Promise<{ plugin: Plugin, warnings: string[] }> {
     warnings.splice(0, Infinity)
 
     const plugin = externals(options)
-    if (doBuildStart)
-        await callHook(plugin, 'buildStart')
+    await callHook(plugin, 'buildStart')
     return { plugin, warnings }
 }
 

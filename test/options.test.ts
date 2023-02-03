@@ -25,11 +25,12 @@ testProp(
     [externalsOptionsArbitrary()],
     async (t, options) => {
         try {
-            await initPlugin(options, false)
+            await initPlugin(options)
             t.pass()
         }
-        catch {
-            t.fail()
+        catch(err) {
+            const { message } = err as Error
+            message.startsWith('Cannot read file') ? t.pass() : t.fail(message)
         }
     }
 )

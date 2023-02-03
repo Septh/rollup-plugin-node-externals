@@ -99,7 +99,6 @@ If you're working with monorepos, the `packagePath` option is made for you. It c
 Set the `deps`, `devDeps`, `peerDeps` and `optDeps` options to `false` to prevent the corresponding dependencies from being externalized, therefore letting Rollup bundle them with your code.
 
 #### include?: string | RegExp | (string | RegExp)[] = []
-#### exclude?: string | RegExp | (string | RegExp)[] = []
 Use the `include` option to force certain dependencies into the list of externals, regardless of other settings:
 ```js
 externals({
@@ -108,6 +107,7 @@ externals({
 })
 ```
 
+#### exclude?: string | RegExp | (string | RegExp)[] = []
 Conversely, use the `exclude` option to remove certain dependencies from the list of externals, regardless of other settings:
 ```js
 externals({
@@ -118,10 +118,11 @@ externals({
 
 ## Notes
 ### 1/ This plugin is smart
-Falsy values in `include` and `exclude` are silently ignored. This allows for conditional constructs like `exclude: process.env.NODE_ENV === 'production' && 'my-prod-only-dep'`.
+- Falsy values in `include` and `exclude` are silently ignored. This allows for conditional constructs like `exclude: process.env.NODE_ENV === 'production' && 'my-prod-only-dep'`.
+- Subpath imports are supported with regexes, meaning that `include: /^lodash/` will externalize `lodash` and also `lodash/map`, `lodash/merge`, etc.
 
 ### 2/ This plugin is not _that_ smart
-It uses an exact match against your imports, so if your are using some kind of path substitution in your code, eg.:
+It uses an exact match against your imports _as written in your code_, so if your are using some kind of path substitution, eg.:
 
 ```js
 // In your code, say '@/' is mapped to some directory:
@@ -136,9 +137,6 @@ externals({
     include: '@/mylib'
 })
 ```
-
-However, subpath imports are supported with regexes, meaning that `include: /^lodash/` will externalize `lodash` and also `lodash/map`, `lodash/merge`, etc.
-
 
 ### 3/ Order matters
 If you're also using [`@rollup/plugin-node-resolve`](https://github.com/rollup/plugins/tree/master/packages/node-resolve/#readme), make sure this plugin comes _before_ it in the `plugins` array:
@@ -166,14 +164,14 @@ Rollup's own `external` configuration option always takes precedence over this p
 <details><summary>(click to expand)</summary>
 
 ### Breaking changes in version 5
-- In previous versions, the `devDeps` option (see below) defaulted to `true`.<br>This was practical, but often wrong: devDependencies are meant just for that: being used when developping. Therefore, the `devDeps` option now defaults to `false`, meaning Rollup will include them in your bundle.
+- In previous versions, the `devDeps` option defaulted to `true`.<br>This was practical, but often wrong: devDependencies are meant just for that: being used when developping. Therefore, the `devDeps` option now defaults to `false`, meaning Rollup will include them in your bundle.
 - As anticipated since v4, the `builtinsPrefix` option now defaults to `'add'`.
-- The deprecated `prefixedBuiltins` option has been removed.
+- The deprecated `prefixedBuiltins` option has been removed. Use `builtinsPrefix` instead.
 - `rollup-plugin-node-externals` no longer depends on the Find-Up package (while this is not a breaking change per se, it can be in some edge situations).
-- Now has a _peer dependency_ on `rollup ^2.60.0 || ^3.0.0`.
+- The plugin now has a _peer dependency_ on `rollup ^2.60.0 || ^3.0.0`.
 
 ### Breaking changes in version 4
-- In previous versions, the `deps` option (see below) defaulted to `false`.<br>This was practical, but often wrong: when bundling for distribution, you want your own dependencies to be installed by the package manager alongside your package, so they should not be bundled in the code. Therefore, the `deps` option now defaults to `true`.
+- In previous versions, the `deps` option defaulted to `false`.<br>This was practical, but often wrong: when bundling for distribution, you want your own dependencies to be installed by the package manager alongside your package, so they should not be bundled in the code. Therefore, the `deps` option now defaults to `true`.
 - Now requires Node 14 (up from Node 12 for previous versions).
 - Now has a _peer dependency_ on `rollup ^2.60.0`.
 </summary>

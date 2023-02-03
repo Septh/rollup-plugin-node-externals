@@ -4,13 +4,15 @@
     ],
     "compilerOptions": {
 
-        // Input
+        // Lib
         "lib": [ "es2020" ],
+        "skipDefaultLibCheck": true,
+
+        // Input
         "moduleResolution": "Node16",
         "resolveJsonModule": true,
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
-        "skipDefaultLibCheck": true,
 
         // Output
         "outDir": "out",

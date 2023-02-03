@@ -128,39 +128,33 @@ const isString = (str: unknown): str is string =>
  */
 function externals(options: ExternalsOptions = {}): Plugin {
 
-    // Consolidate options
     const config: Config = Object.assign(Object.create(null), defaults, options)
-
-    // Map the include and exclude options to arrays of regexes.
-    const warnings: string[] = []
-    const [ include, exclude ] = ([ 'include', 'exclude' ] as const).map(option =>
-        ([] as (string | RegExp | null | undefined | false)[])
-            .concat(config[option])
-            .reduce((result, entry, index) => {
-                if (entry) {
-                    if (entry instanceof RegExp)
-                        result.push(entry)
-                    else if (typeof entry === 'string')
-                        result.push(new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
-                    else {
-                        warnings.push(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
-                    }
-                }
-                return result
-            }, [] as RegExp[])
-    )
-
-    const isIncluded = (id: string) => include.some(rx => rx.test(id))
+    let include: RegExp[],
+        exclude: RegExp[]
+    const isIncluded = (id: string) => include.length  === 0 || include.some(rx => rx.test(id))
     const isExcluded = (id: string) => exclude.some(rx => rx.test(id))
 
     return {
         name: 'node-externals',
 
         async buildStart() {
-            // Issue any warnings we may have collected earlier.
-            while (warnings.length > 0) {
-                this.warn(warnings.shift()!)    // eslint-disable-line @typescript-eslint/no-non-null-assertion
-            }
+            // Map the include and exclude options to arrays of regexes.
+            [ include, exclude ] = ([ 'include', 'exclude' ] as const).map(option =>
+                ([] as (string | RegExp | null | undefined | false)[])
+                    .concat(config[option])
+                    .reduce((result, entry, index) => {
+                        if (entry) {
+                            if (entry instanceof RegExp)
+                                result.push(entry)
+                            else if (typeof entry === 'string')
+                                result.push(new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
+                            else {
+                                this.warn(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
+                            }
+                        }
+                        return result
+                    }, [] as RegExp[])
+            )
 
             // Prepare npm dependencies list.
             const packageFiles: string[] = Array.isArray(config.packagePath)
@@ -179,7 +173,6 @@ function externals(options: ExternalsOptions = {}): Plugin {
                     previous = current, current = path.dirname(current)
                 ) {
                     const entries = await fs.readdir(current, { withFileTypes: true })
-
                     if (entries.some(entry => entry.name === 'package.json' && entry.isFile()))
                         packageFiles.push(path.join(current, 'package.json'))
 
@@ -236,9 +229,8 @@ function externals(options: ExternalsOptions = {}): Plugin {
         },
 
         async resolveId(id) {
-
-            // Let Rollup handle already resolved ids, relative imports and virtual modules.
-            if (/^(?:\0|\.{1,2}[\\/])/.test(id) || path.isAbsolute(id))
+            // Ignore virtual modules and already resolved ids.
+            if (id.charCodeAt(0) === 0 || path.isAbsolute(id))
                 return null
 
             // Handle node builtins.
@@ -248,7 +240,7 @@ function externals(options: ExternalsOptions = {}): Plugin {
                     id: config.builtinsPrefix === 'add' || builtins.alwaysPrefixed.has(id)
                         ? nodePrefix + stripped
                         : stripped,
-                    external: config.builtins && !isExcluded(id),
+                    external: (config.builtins || isIncluded(id)) && !isExcluded(id),
                     moduleSideEffects: false
                 }
             }

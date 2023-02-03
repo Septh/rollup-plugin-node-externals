@@ -1,14 +1,12 @@
-import { createRequire, builtinModules } from 'node:module'
 import path from 'node:path'
+import fs from 'node:fs/promises'
 import { defineConfig } from 'rollup'
 import nodeResolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
 import typescript from 'rollup-plugin-ts'
 
 /** @type { import('./package.json') } */
-const pkg = createRequire(import.meta.url)('./package.json')
-
-const builtins = new Set(builtinModules)
+const pkg = JSON.parse(await fs.readFile('./package.json', 'utf-8'))
 
 /** @type { import('rollup').PluginImpl } */
 function packageType() {
