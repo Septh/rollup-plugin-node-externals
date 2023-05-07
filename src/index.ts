@@ -19,10 +19,11 @@ export interface ExternalsOptions {
      * node: prefix handing for importing Node builtins:
      * - `'add'`    turns `'path'` to `'node:path'`
      * - `'strip'`  turns `'node:path'` to `'path'`
+     * - `'ignore'` leave Node builtin names as-is
      *
      * Defaults to `add`.
      */
-    builtinsPrefix?: 'add' | 'strip'
+    builtinsPrefix?: 'add' | 'strip' | 'ignore'
 
     /**
      * Path/to/your/package.json file (or array of paths).
@@ -140,7 +141,7 @@ function externals(options: ExternalsOptions = {}): Plugin {
         async buildStart() {
             // Map the include and exclude options to arrays of regexes.
             [ include, exclude ] = ([ 'include', 'exclude' ] as const).map(option =>
-                ([] as (string | RegExp | null | undefined | false)[])
+                ([] as Array<string | RegExp | null | undefined | false>)
                     .concat(config[option])
                     .reduce((result, entry, index) => {
                         if (entry) {
@@ -192,7 +193,7 @@ function externals(options: ExternalsOptions = {}): Plugin {
                 try {
                     const json = (await fs.readFile(packageFile)).toString()
                     try {
-                        const pkg = JSON.parse(json) as PackageJson
+                        const pkg: PackageJson = JSON.parse(json)
                         Object.assign(dependencies,
                             config.deps     ? pkg.dependencies         : undefined,
                             config.devDeps  ? pkg.devDependencies      : undefined,
@@ -229,23 +230,25 @@ function externals(options: ExternalsOptions = {}): Plugin {
         },
 
         async resolveId(id) {
-            // Ignore virtual modules and already resolved ids.
-            if (id.charCodeAt(0) === 0 || path.isAbsolute(id))
+            // Let Rollup handle already resolved ids, relative imports and virtual modules.
+            if (path.isAbsolute(id) || /^(?:\0|\.{1,2}[\\/])/.test(id))
                 return null
 
             // Handle node builtins.
             if (id.startsWith(nodePrefix) || builtins.all.has(id)) {
                 const stripped = id.replace(nodePrefixRx, '')
                 return {
-                    id: config.builtinsPrefix === 'add' || builtins.alwaysPrefixed.has(id)
-                        ? nodePrefix + stripped
-                        : stripped,
-                    external: (config.builtins || isIncluded(id)) && !isExcluded(id),
+                    id: config.builtinsPrefix === 'ignore'
+                        ? id
+                        : config.builtinsPrefix === 'add' || builtins.alwaysPrefixed.has(id)
+                            ? nodePrefix + stripped
+                            : stripped,
+                    external: config.builtins && !isExcluded(id),
                     moduleSideEffects: false
                 }
             }
 
-            // Handle other imports.
+            // Handle npm dependencies.
             return isIncluded(id) && !isExcluded(id)
                 ? false     // external
                 : null      // normal handling

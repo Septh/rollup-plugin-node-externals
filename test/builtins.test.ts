@@ -22,3 +22,17 @@ test("Removes 'node:' prefix when using builtinsPrefix='strip'", async t => {
         })
     }
 })
+
+test("Ignores 'node:' prefix when using builtinsPrefix='ignore'", async t => {
+    const { plugin } = await initPlugin({
+        builtinsPrefix: 'ignore'
+    })
+    t.like(await callHook(plugin, 'resolveId', 'node:path'), {
+        id: 'node:path',
+        external: true
+    })
+    t.like(await callHook(plugin, 'resolveId', 'path'), {
+        id: 'path',
+        external: true
+    })
+})
