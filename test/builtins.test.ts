@@ -1,5 +1,5 @@
 import test from 'ava'
-import { initPlugin, callHook } from './_common'
+import { initPlugin, callHook } from './_common.js'
 
 test("Adds 'node:' prefix to builtins by default", async t => {
     const { plugin } = await initPlugin()

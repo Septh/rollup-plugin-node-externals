@@ -1,8 +1,8 @@
 import test from 'ava'
 import { testProp, fc } from '@fast-check/ava'
 import type { Arbitrary } from 'fast-check'
-import { initPlugin, callHook, fixture } from './_common'
-import { type ExternalsOptions } from '../src/index'
+import { initPlugin, callHook, fixture } from './_common.js'
+import { type ExternalsOptions } from '../source/index.js'
 
 // Ensures tests use local package.json
 process.chdir(fixture())
@@ -11,7 +11,7 @@ process.chdir(fixture())
 const externalsOptionsArbitrary = (): Arbitrary<ExternalsOptions> => fc.record({
     packagePath: fc.string(),
     builtins: fc.boolean(),
-    builtinsPrefix: fc.oneof(fc.constant<'strip'>('strip'), fc.constant<'add'>('add')),
+    builtinsPrefix: fc.oneof(fc.constant<'strip'>('strip'), fc.constant<'add'>('add'), fc.constant<'ignore'>('ignore')),
     deps: fc.boolean(),
     devDeps: fc.boolean(),
     peerDeps: fc.boolean(),

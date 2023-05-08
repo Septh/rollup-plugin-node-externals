@@ -1,27 +1,25 @@
 {
     "files": [
-        "src/index.ts"
+        "source/index.ts"
     ],
     "compilerOptions": {
 
         // Lib
-        "lib": [ "es2020" ],
+        "lib": [ "ESNext" ],
+        "skipLibCheck": true,
         "skipDefaultLibCheck": true,
 
         // Input
         "moduleResolution": "Node16",
-        "resolveJsonModule": true,
-        "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
 
         // Output
-        "outDir": "out",
-        "target": "es2020",
-        "module": "CommonJS",
+        "outDir": "dist",
+        "target": "ESNext",
+        "module": "ESNext",
         "declaration": true,
-        "declarationMap": false,
+        "declarationMap": true,
         "sourceMap": true,
-        "stripInternal": true,
 
         // Type checkings
         "strict": true,
@@ -30,6 +28,5 @@
         "noUnusedParameters": false,
         "noPropertyAccessFromIndexSignature": true,
         "noUncheckedIndexedAccess": false,
-        // "exactOptionalPropertyTypes": true,
     }
 }

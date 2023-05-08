@@ -1,7 +1,7 @@
 # rollup-plugin-node-externals
 A Rollup plugin that automatically declares NodeJS built-in modules as `external`. Also handles npm dependencies, devDependencies, peerDependencies and optionalDependencies.
 
-Works in monorepos too!
+Works in npm/yarn/pnpm/lerna monorepos too!
 
 ## Why you need this
 <details><summary>(click to expand)</summary>
@@ -24,7 +24,7 @@ npm install --save-dev rollup-plugin-node-externals
 ```
 
 ## Usage
-When bundling an application or library, you want to have your **runtime dependencies** listed under `dependencies` in `package.json`, and **development dependencies** listed under `devDependencies`.
+You generally want to have your **runtime dependencies** listed under `dependencies` in `package.json`, and your **development dependencies** listed under `devDependencies`.
 
 If you follow this simple rule, then the defaults are just what you need:
 ```js
@@ -162,7 +162,12 @@ Rollup's own `external` configuration option always takes precedence over this p
 
 
 ## Breaking changes
-<details><summary>(click to expand)</summary>
+
+### Breaking changes in version 6
+- This package is now esm-only and requires NodeJS v16+.<br />*If you need CommonJS or older NodeJS support, please stick to v5.*
+- This plugin now has a **peer-dependency** on Rollup ^3.0.0.<br />*If you need Rollup 2 support, please stick to v5.*
+
+<details><summary>Previous versions -- click to expand</summary>
 
 ### Breaking changes in version 5
 - In previous versions, the `devDeps` option defaulted to `true`.<br>This was practical, but often wrong: devDependencies are meant just for that: being used when developping. Therefore, the `devDeps` option now defaults to `false`, meaning Rollup will include them in your bundle.

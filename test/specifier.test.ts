@@ -1,5 +1,5 @@
 import test from 'ava'
-import { initPlugin, callHook, noDepsAtAllOptions } from './_common'
+import { initPlugin, callHook, noDepsAtAllOptions } from './_common.js'
 
 test("Does NOT filter out relative specifiers by default", async t => {
     const relativeSpecifiers = [ './sibling.js', '../parent.js' ]

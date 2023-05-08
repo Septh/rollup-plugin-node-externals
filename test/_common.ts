@@ -1,6 +1,9 @@
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { Plugin, RollupError, ObjectHook } from 'rollup'
-import { externals, type ExternalsOptions } from '../src/index'
+import { externals, type ExternalsOptions } from '../source/index.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const warnings: string[] = []
 const fakePluginContext = {
