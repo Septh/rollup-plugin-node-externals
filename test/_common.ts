@@ -20,6 +20,10 @@ const fakePluginContext = {
 
     warn(message: string): void {
         warnings.push(message)
+    },
+
+    addWatchFile(_file: string) {
+        // nop
     }
 }
 

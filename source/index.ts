@@ -107,7 +107,6 @@ const workspaceRootFiles = new Set([
 
 // Our defaults
 type Config = Required<ExternalsOptions>
-
 const defaults: Config = {
     builtins: true,
     builtinsPrefix: 'add',
@@ -129,11 +128,11 @@ const isString = (str: unknown): str is string =>
  */
 function externals(options: ExternalsOptions = {}): Plugin {
 
-    const config: Config = Object.assign(Object.create(null), defaults, options)
+    const config: Config = { ...defaults, ...options }
     let include: RegExp[],
         exclude: RegExp[]
-    const isIncluded = (id: string) => include.some(rx => rx.test(id))
-    const isExcluded = (id: string) => exclude.some(rx => rx.test(id))
+    const isIncluded = (id: string) => include.some(rx => rx.test(id)),
+          isExcluded = (id: string) => exclude.some(rx => rx.test(id))
 
     return {
         name: 'node-externals',
@@ -144,43 +143,41 @@ function externals(options: ExternalsOptions = {}): Plugin {
                 ([] as Array<string | RegExp | null | undefined | false>)
                     .concat(config[option])
                     .reduce((result, entry, index) => {
-                        if (entry) {
-                            if (entry instanceof RegExp)
-                                result.push(entry)
-                            else if (typeof entry === 'string')
-                                result.push(new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
-                            else {
-                                this.warn(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
-                            }
+                        if (entry instanceof RegExp)
+                            result.push(entry)
+                        else if (isString(entry))
+                            result.push(new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
+                        else if (entry) {
+                            this.warn(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
                         }
                         return result
                     }, [] as RegExp[])
             )
 
-            // Prepare npm dependencies list.
-            const packageFiles: string[] = Array.isArray(config.packagePath)
+            // Populate the packagePath option if not given by getting all package.json files
+            // from cwd up to the root of the git repo, the root of the monorepo,
+            // or the root of the volume, whichever comes first.
+            const packagePaths: string[] = Array.isArray(config.packagePath)
                 ? config.packagePath.filter(isString)
                 : isString(config.packagePath)
                     ? [ config.packagePath ]
                     : []
-
-            // Populate packagePaths if not given by getting all package.json files
-            // from cwd up to the root of the git repo, the root of the monorepo,
-            // or the root of the volume, whichever comes first.
-            if (packageFiles.length === 0) {
+            if (packagePaths.length === 0) {
                 for (
                     let current = process.cwd(), previous: string | undefined;
                     previous !== current;
                     previous = current, current = path.dirname(current)
                 ) {
                     const entries = await fs.readdir(current, { withFileTypes: true })
-                    if (entries.some(entry => entry.name === 'package.json' && entry.isFile()))
-                        packageFiles.push(path.join(current, 'package.json'))
 
-                    // Break early if this is a git repo root or a pnpm/lerna workspace root.
+                    // Gather package.json files
+                    if (entries.some(entry => entry.name === 'package.json' && entry.isFile()))
+                        packagePaths.push(path.join(current, 'package.json'))
+
+                    // Break early if this is a git repo root or there is a known monorepo root file.
                     if (entries.some(entry =>
-                        (entry.name === '.git' && entry.isDirectory()) ||
-                        (workspaceRootFiles.has(entry.name) && entry.isFile())
+                        (entry.name === '.git' && entry.isDirectory())
+                        || (workspaceRootFiles.has(entry.name) && entry.isFile())
                     )) {
                         break
                     }
@@ -189,9 +186,9 @@ function externals(options: ExternalsOptions = {}): Plugin {
 
             // Gather dependencies names.
             const dependencies: Record<string, string> = {}
-            for (const packageFile of packageFiles) {
+            for (const packagePath of packagePaths) {
                 try {
-                    const json = (await fs.readFile(packageFile)).toString()
+                    const json = (await fs.readFile(packagePath)).toString()
                     try {
                         const pkg: PackageJson = JSON.parse(json)
                         Object.assign(dependencies,
@@ -202,23 +199,22 @@ function externals(options: ExternalsOptions = {}): Plugin {
                         )
 
                         // Watch the file.
-                        if (this.meta.watchMode)
-                            this.addWatchFile(packageFile)
+                        this.addWatchFile(packagePath)
 
                         // Break early if this is a npm/yarn workspace root.
-                        if ('workspaces' in pkg || 'packages' in pkg)
+                        if ('workspaces' in pkg)
                             break
                     }
                     catch {
                         this.error({
-                            message: `File ${JSON.stringify(packageFile)} does not look like a valid package.json file.`,
+                            message: `File ${JSON.stringify(packagePath)} does not look like a valid package.json file.`,
                             stack: undefined
                         })
                     }
                 }
                 catch {
                     this.error({
-                        message: `Cannot read file ${JSON.stringify(packageFile)}`,
+                        message: `Cannot read file ${JSON.stringify(packagePath)}`,
                         stack: undefined
                     })
                 }
