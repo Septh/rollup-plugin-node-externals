@@ -31,15 +31,13 @@
   "engines": {
     "node": ">=16.0.0"
   },
-  "type": "module",
-  "exports": {
-    "types": "./dist/index.d.ts",
-    "import": "./dist/index.js"
-  },
   "files": [
     "dist",
     "!dist/**/*.map"
   ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
