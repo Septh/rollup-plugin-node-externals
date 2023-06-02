@@ -10,7 +10,7 @@
     ],
     "env": {
         "node": true,
-        "es2021": true
+        "es2022": true
     },
     "rules": {
         "no-debugger": "off",
