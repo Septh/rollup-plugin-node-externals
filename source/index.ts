@@ -129,8 +129,10 @@ const isString = (str: unknown): str is string =>
 function nodeExternals(options: ExternalsOptions = {}): Plugin {
 
     const config: Config = { ...defaults, ...options }
+
     let include: RegExp[],
         exclude: RegExp[]
+
     const isIncluded = (id: string) => include.some(rx => rx.test(id)),
           isExcluded = (id: string) => exclude.some(rx => rx.test(id))
 
@@ -157,11 +159,9 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
             // Populate the packagePath option if not given by getting all package.json files
             // from cwd up to the root of the git repo, the root of the monorepo,
             // or the root of the volume, whichever comes first.
-            const packagePaths: string[] = Array.isArray(config.packagePath)
-                ? config.packagePath.filter(isString)
-                : isString(config.packagePath)
-                    ? [ config.packagePath ]
-                    : []
+            const packagePaths = ([] as string[])
+                    .concat(config['packagePath'])
+                    .filter(isString)
             if (packagePaths.length === 0) {
                 for (
                     let current = process.cwd(), previous: string | undefined;
@@ -239,7 +239,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                         : config.builtinsPrefix === 'add' || builtins.alwaysPrefixed.has(id)
                             ? nodePrefix + stripped
                             : stripped,
-                    external: config.builtins && !isExcluded(id),
+                            external: config.builtins && !isExcluded(id),
                     moduleSideEffects: false
                 }
             }
