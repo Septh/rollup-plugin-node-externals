@@ -32,16 +32,6 @@ type ImplementedHooks =
     | 'buildStart'
     | 'resolveId'
 
-// This config makes for empty include[] and exclude[] patterns.
-export const noDepsAtAllOptions: ExternalsOptions = {
-    packagePath: path.join(__dirname, 'fixtures/no-deps.package.json'),
-    builtins: false,
-    deps: false,
-    devDeps: false,
-    optDeps: false,
-    peerDeps: false
-}
-
 export async function callHook(plugin: Plugin, hookName: ImplementedHooks, ...args: any[]) {
     const hook = plugin[hookName] as ObjectHook<(this: typeof fakePluginContext, ...args: any) => any>
     if (typeof hook === 'function')
