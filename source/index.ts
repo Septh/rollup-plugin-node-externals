@@ -96,6 +96,11 @@ const builtins = {
     )
 }
 
+// node:test is currently not part of builtinModules... and may well never be
+// (see https://github.com/nodejs/node/issues/42785)
+builtins.all.add('node:test')
+builtins.alwaysPrefixed.add('node:test')
+
 const workspaceRootFiles = new Set([
     'pnpm-workspace.yaml',  // pnpm
     'lerna.json',           // Lerna
