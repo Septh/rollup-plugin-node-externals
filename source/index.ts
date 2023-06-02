@@ -126,7 +126,7 @@ const isString = (str: unknown): str is string =>
  * A Rollup plugin that automatically declares NodeJS built-in modules,
  * and optionally npm dependencies, as 'external'.
  */
-function externals(options: ExternalsOptions = {}): Plugin {
+function nodeExternals(options: ExternalsOptions = {}): Plugin {
 
     const config: Config = { ...defaults, ...options }
     let include: RegExp[],
@@ -252,5 +252,8 @@ function externals(options: ExternalsOptions = {}): Plugin {
     }
 }
 
-export default externals
-export { externals }
+export default nodeExternals
+export {
+    nodeExternals,              // Named export since 6.1
+    nodeExternals as externals  // For backwards compatibility
+}
