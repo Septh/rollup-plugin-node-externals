@@ -3,6 +3,7 @@ A Rollup plugin that automatically declares NodeJS built-in modules as `external
 
 Works in npm/yarn/pnpm/lerna monorepos too!
 
+
 ## Why you need this
 <details><summary>(click to expand)</summary>
 
@@ -10,44 +11,68 @@ By default, Rollup doesn't know a thing about NodeJS, so trying to bundle simple
 
 The solution here is quite simple: you must tell Rollup that the `node:path` module is in fact _external_. This way, Rollup won't try to bundle it in and rather leave the `import` statement as is (or translate it to a `require()` call if bundling for CommonJS).
 
-However, this must be done for each and every NodeJS built-in you happen to use in your program: `node:path`, `node:os`, `node:fs`, `node:url`, etc., which can quicky become cumbersome when done manually.
+However, this must be done for each and every NodeJS built-in you happen to use in your program: `node:path`, `node:os`, `node:fs`, `node:url`, etc., which can quickly become cumbersome when done manually.
 
 So the primary goal of this plugin is simply to automatically declare all NodeJS built-in modules as external.
 
 As an added bonus, this plugin will also allow you to declare your dependencies (as per your local or monorepo `package.json` file(s)) as external.
 </details>
 
+
 ## Installation
 Use your favorite package manager. Mine is [npm](https://www.npmjs.com).
+
 ```sh
 npm install --save-dev rollup-plugin-node-externals
 ```
 
-## Usage
-You generally want to have your **runtime dependencies** listed under `dependencies` in `package.json`, and your **development dependencies** listed under `devDependencies`.
 
-If you follow this simple rule, then the defaults are just what you need:
+## Usage
+
+### Import
+The plugin is available both as the default export and as a named export:
+
 ```js
+import nodeExternals from 'rollup-plugin-node-externals'
+```
+
+and
+
+```js
+import { nodeExternals } from 'rollup-plugin-node-externals'
+```
+
+will both work.
+
+> Note: an undocumented named export `externals` also exists that is kept in v6.1 for backwards compatibility only and will be removed in the next major version.
+
+### Options
+You generally want to have your **runtime dependencies** (those that will be imported/required at runtime) listed under `dependencies` in `package.json`, and your **development dependencies** (those that should be bundled in by Rollup) listed under `devDependencies`.
+
+If you follow this simple rule, then the defaults settings are just what you need:
+
+```js
+// rollup.config.js
+
 export default {
   ...
   plugins: [
-    externals(),
+    nodeExternals(),
   ]
 }
 ```
 
 This will bundle your `devDependencies` in while leaving your `dependencies`, `peerDependencies` and `optionalDependencies` external.
 
-### Options
-All options are, well, optional.
+Should the defaults not suit your case, here is the full list of options.
 
 ```typescript
-import externals from 'rollup-plugin-node-externals'
+import nodeExternals from 'rollup-plugin-node-externals'
 
 export default {
   ...
   plugins: [
-    externals({
+    nodeExternals({
 
       // Make node builtins external. Default: true.
       builtins?: boolean
@@ -85,13 +110,13 @@ Set the `builtins` option to `false` if you'd like to use some shims/polyfills f
 
 #### builtinsPrefix?: 'add' | 'strip' | 'ignore' = 'add'
 How to handle the `node:` scheme used in recent versions of Node (i.e., `import path from 'node:path'`).<br>
-- If `add` (the default), the `node:` prefix is always added. In effect, this homogenizes all your imports of node builtins to their prefixed version.
-- If `strip` (the default), the import is always resolved unprefixed. In effect, this homogenizes all your imports of node builtins to their unprefixed version.
-- `ignore` will simply leave all prefixes as written in your code.
-> _Note that prefix handling is independant of the `builtins` options being enabled or disabled._
+- If `add` (the default, recommended), the `node:` prefix is always added. In effect, this homogenizes all your imports of Node builtins to their prefixed version.
+- If `strip` (the default), the import is always resolved unprefixed. In effect, this homogenizes all your imports of Node builtins to their unprefixed version.
+- `ignore` will simply leave all builtins imports as written in your code.
+> _Note that prefix handling is always applied, regardless of the `builtins` options being enabled or disabled._
 
 #### packagePath?: string | string[] = []
-If you're working with monorepos, the `packagePath` option is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all package.json files in parent directories recursively until either the root git directory is reached or until no other package.json can be found.
+If you're working with monorepos, the `packagePath` option is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all `package.json` files in parent directories recursively until either the root git directory is reached or until no other `package.json` can be found.
 
 #### deps?: boolean = true
 #### devDeps?: boolean = false
@@ -101,8 +126,9 @@ Set the `deps`, `devDeps`, `peerDeps` and `optDeps` options to `false` to preven
 
 #### include?: string | RegExp | (string | RegExp)[] = []
 Use the `include` option to force certain dependencies into the list of externals, regardless of other settings:
+
 ```js
-externals({
+nodeExternals({
   deps: false,                // Deps will be bundled in
   include: /^fsevents/        // Except for fsevents
 })
@@ -110,14 +136,17 @@ externals({
 
 #### exclude?: string | RegExp | (string | RegExp)[] = []
 Conversely, use the `exclude` option to remove certain dependencies from the list of externals, regardless of other settings:
+
 ```js
-externals({
+nodeExternals({
   deps: true,                 // Deps are external
   exclude: 'electron-reload'  // Yet we want `electron-reload` bundled in
 })
 ```
 
+
 ## Notes
+
 ### 1/ This plugin is smart
 - Falsy values in `include` and `exclude` are silently ignored. This allows for conditional constructs like `exclude: process.env.NODE_ENV === 'production' && 'my-prod-only-dep'`.
 - Subpath imports are supported with regexes, meaning that `include: /^lodash/` will externalize `lodash` and also `lodash/map`, `lodash/merge`, etc.
@@ -134,7 +163,7 @@ and you don't want `mylib` bundled in, then write:
 
 ```js
 // In rollup.config.js:
-externals({
+nodeExternals({
     include: '@/mylib'
 })
 ```
@@ -143,14 +172,14 @@ externals({
 If you're also using [`@rollup/plugin-node-resolve`](https://github.com/rollup/plugins/tree/master/packages/node-resolve/#readme), make sure this plugin comes _before_ it in the `plugins` array:
 
 ```js
-import externals from 'rollup-plugin-node-externals'
-import resolve from '@rollup/plugin-node-resolve'
+import nodeExternals from 'rollup-plugin-node-externals'
+import nodeResolve from '@rollup/plugin-node-resolve'
 
 export default {
   ...
   plugins: [
-    externals(),
-    resolve(),
+    nodeExternals(),
+    nodeResolve(),
   ]
 }
 ```
