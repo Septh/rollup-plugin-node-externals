@@ -226,7 +226,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
         },
 
         async resolveId(id) {
-            // Let Rollup handle already resolved ids, relative imports and virtual modules.
+            // Ignore already resolved ids, relative imports and virtual modules.
             if (path.isAbsolute(id) || /^(?:\0|\.{1,2}[\\/])/.test(id))
                 return null
 
@@ -239,7 +239,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                         : config.builtinsPrefix === 'add' || builtins.alwaysPrefixed.has(id)
                             ? nodePrefix + stripped
                             : stripped,
-                            external: config.builtins && !isExcluded(id),
+                    external: (config.builtins || isIncluded(id)) && !isExcluded(id),
                     moduleSideEffects: false
                 }
             }
