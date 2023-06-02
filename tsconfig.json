@@ -16,12 +16,12 @@
         // Output
         "outDir": "dist",
         "target": "ESNext",
-        "module": "ESNext",
+        "module": "Node16",
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
 
-        // Type checkings
+        // Type checking
         "strict": true,
         "noImplicitReturns": true,
         "noUnusedLocals": false,
