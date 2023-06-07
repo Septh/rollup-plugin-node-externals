@@ -106,14 +106,14 @@ export default {
 ```
 
 #### builtins?: boolean = true
-Set the `builtins` option to `false` if you'd like to use some shims/polyfills for those. You'll most certainly need [an other plugin](https://github.com/ionic-team/rollup-plugin-node-polyfills) for this.
+Set the `builtins` option to `false` if you'd like to use some shims/polyfills for those. You'll most certainly need [an other plugin](https://github.com/ionic-team/rollup-plugin-node-polyfills) as well.
 
 #### builtinsPrefix?: 'add' | 'strip' | 'ignore' = 'add'
-How to handle the `node:` scheme used in recent versions of Node (i.e., `import path from 'node:path'`).<br>
+How to handle the `node:` scheme used in recent versions of Node (i.e., `import path from 'node:path'`).
 - If `add` (the default, recommended), the `node:` prefix is always added. In effect, this homogenizes all your imports of Node builtins to their prefixed version.
-- If `strip` (the default), the import is always resolved unprefixed. In effect, this homogenizes all your imports of Node builtins to their unprefixed version.
+- If `strip`, the prefix is always removed. In effect, this homogenizes all your imports of Node builtins to their unprefixed version.
 - `ignore` will simply leave all builtins imports as written in your code.
-> _Note that prefix handling is always applied, regardless of the `builtins` options being enabled or disabled._
+> _Note that prefix handling is always applied, regardless of the `builtins` options being enabled or not._
 
 #### packagePath?: string | string[] = []
 If you're working with monorepos, the `packagePath` option is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all `package.json` files in parent directories recursively until either the root git directory is reached or until no other `package.json` can be found.
@@ -130,7 +130,7 @@ Use the `include` option to force certain dependencies into the list of external
 ```js
 nodeExternals({
   deps: false,                // Deps will be bundled in
-  include: /^fsevents/        // Except for fsevents
+  include: 'fsevents'         // Except for fsevents
 })
 ```
 
