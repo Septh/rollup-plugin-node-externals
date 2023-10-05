@@ -49,7 +49,7 @@ will both work.
 ### Options
 You generally want to have your **runtime dependencies** (those that will be imported/required at runtime) listed under `dependencies` in `package.json`, and your **development dependencies** (those that should be bundled in by Rollup) listed under `devDependencies`.
 
-If you follow this simple rule, then the defaults settings are just what you need:
+If you follow this simple rule, then the default settings are just what you need:
 
 ```js
 // rollup.config.js
@@ -118,10 +118,7 @@ How to handle the `node:` scheme used in recent versions of Node (i.e., `import 
 #### packagePath?: string | string[] = []
 If you're working with monorepos, the `packagePath` option is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all `package.json` files in parent directories recursively until either the root git directory is reached or until no other `package.json` can be found.
 
-#### deps?: boolean = true
-#### devDeps?: boolean = false
-#### peerDeps?: boolean = true
-#### optDeps?: boolean = true
+#### deps?: boolean = true<br>devDeps?: boolean = false<br>peerDeps?: boolean = true<br>optDeps?: boolean = true
 Set the `deps`, `devDeps`, `peerDeps` and `optDeps` options to `false` to prevent the corresponding dependencies from being externalized, therefore letting Rollup bundle them with your code.
 
 #### include?: string | RegExp | (string | RegExp)[] = []
@@ -139,7 +136,7 @@ Conversely, use the `exclude` option to remove certain dependencies from the lis
 
 ```js
 nodeExternals({
-  deps: true,                 // Deps are external
+  deps: true,                 // Keep deps external
   exclude: 'electron-reload'  // Yet we want `electron-reload` bundled in
 })
 ```
@@ -194,7 +191,7 @@ Rollup's own `external` configuration option always takes precedence over this p
 
 ### Breaking changes in version 6
 - This package is now esm-only and requires NodeJS v16+.<br />*If you need CommonJS or older NodeJS support, please stick to v5.*
-- This plugin now has a **peer-dependency** on Rollup ^3.0.0.<br />*If you need Rollup 2 support, please stick to v5.*
+- This plugin now has a **peer-dependency** on Rollup `^3.0.0 || ^4.0.0`.<br />*If you need Rollup 2 support, please stick to v5.*
 
 <details><summary>Previous versions -- click to expand</summary>
 

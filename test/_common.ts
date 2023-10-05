@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Plugin, RollupError, ObjectHook } from 'rollup'
-import { externals, type ExternalsOptions } from '../source/index.js'
+import { nodeExternals, type ExternalsOptions } from '../source/index.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -44,7 +44,7 @@ export async function callHook(plugin: Plugin, hookName: ImplementedHooks, ...ar
 export async function initPlugin(options: ExternalsOptions = {}): Promise<{ plugin: Plugin, warnings: string[] }> {
     warnings.splice(0, Infinity)
 
-    const plugin = externals(options)
+    const plugin = nodeExternals(options)
     await callHook(plugin, 'buildStart')
     return { plugin, warnings }
 }

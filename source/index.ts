@@ -3,8 +3,8 @@ import fs from 'node:fs/promises'
 import { builtinModules } from 'node:module'
 import type { Plugin } from 'rollup'
 
-type MaybeFalsy<T> = T | undefined | null | false
-type MaybeArray<T> = T | T[]
+type MaybeFalsy<T> = (T) | undefined | null | false
+type MaybeArray<T> = (T) | (T)[]
 
 export interface ExternalsOptions {
 
@@ -19,7 +19,7 @@ export interface ExternalsOptions {
      * node: prefix handing for importing Node builtins:
      * - `'add'`    turns `'path'` to `'node:path'`
      * - `'strip'`  turns `'node:path'` to `'path'`
-     * - `'ignore'` leave Node builtin names as-is
+     * - `'ignore'` leaves Node builtin names as-is
      *
      * Defaults to `add`.
      */
@@ -64,29 +64,29 @@ export interface ExternalsOptions {
     /**
      * Force include these deps in the list of externals, regardless of other settings.
      *
-     * Defaults to `[]` (force include nothing)
+     * Defaults to `[]` (force include nothing).
      */
     include?: MaybeArray<MaybeFalsy<string | RegExp>>
 
     /**
      * Force exclude these deps from the list of externals, regardless of other settings.
      *
-     * Defaults to `[]` (force exclude nothing)
+     * Defaults to `[]` (force exclude nothing).
      */
     exclude?: MaybeArray<MaybeFalsy<string | RegExp>>
 }
 
-// Listing only fields of interest in package.json
+// Fields of interest in package.json
 interface PackageJson {
     dependencies?: Record<string, string>
     devDependencies?: Record<string, string>
     peerDependencies?: Record<string, string>
     optionalDependencies?: Record<string, string>
-    workspaces?: string[]
-    packages?: string[]
 }
 
 // Prepare node built-in modules lists.
+// Note: node:test is currently not part of builtinModules... and may well never be
+// (see https://github.com/nodejs/node/issues/42785)
 const nodePrefix = 'node:'
 const nodePrefixRx = /^node:/
 const builtins = {
@@ -96,11 +96,12 @@ const builtins = {
     )
 }
 
-// node:test is currently not part of builtinModules... and may well never be
-// (see https://github.com/nodejs/node/issues/42785)
-builtins.all.add('node:test')
-builtins.alwaysPrefixed.add('node:test')
+for (const extra of [ 'node:test' ]) {
+    builtins.all.add(extra)
+    builtins.alwaysPrefixed.add(extra)
+}
 
+// Files that mark the root of a workspace.
 const workspaceRootFiles = new Set([
     'pnpm-workspace.yaml',  // pnpm
     'lerna.json',           // Lerna
@@ -110,7 +111,7 @@ const workspaceRootFiles = new Set([
     // 'rush.json',            // Rush
 ])
 
-// Our defaults
+// Our defaults.
 type Config = Required<ExternalsOptions>
 const defaults: Config = {
     builtins: true,
@@ -175,11 +176,11 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                 ) {
                     const entries = await fs.readdir(current, { withFileTypes: true })
 
-                    // Gather package.json files
+                    // Gather package.json files.
                     if (entries.some(entry => entry.name === 'package.json' && entry.isFile()))
                         packagePaths.push(path.join(current, 'package.json'))
 
-                    // Break early if this is a git repo root or there is a known monorepo root file.
+                    // Break early if this is a git repo root or there is a known workspace root file.
                     if (entries.some(entry =>
                         (entry.name === '.git' && entry.isDirectory())
                         || (workspaceRootFiles.has(entry.name) && entry.isFile())
@@ -203,7 +204,6 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                             config.optDeps  ? pkg.optionalDependencies : undefined
                         )
 
-                        // Watch the file.
                         this.addWatchFile(packagePath)
 
                         // Break early if this is a npm/yarn workspace root.
@@ -232,7 +232,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
 
         async resolveId(id) {
             // Ignore already resolved ids, relative imports and virtual modules.
-            if (path.isAbsolute(id) || /^(?:\0|\.{1,2}[\\/])/.test(id))
+            if (/^(?:\0|\.{0,2}\/)/.test(id) || path.isAbsolute(id))
                 return null
 
             // Handle node builtins.
