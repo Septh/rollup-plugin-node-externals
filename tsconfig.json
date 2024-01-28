@@ -10,8 +10,8 @@
         "skipDefaultLibCheck": true,
 
         // Input
-        "moduleResolution": "Node16",
         "allowSyntheticDefaultImports": true,
+        "moduleResolution": "Node16",
 
         // Output
         "outDir": "dist",

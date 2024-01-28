@@ -1,6 +1,6 @@
 import path from 'node:path'
 import fs from 'node:fs/promises'
-import { builtinModules } from 'node:module'
+import { createRequire, isBuiltin } from 'node:module'
 import type { Plugin } from 'rollup'
 
 type MaybeFalsy<T> = (T) | undefined | null | false
@@ -78,28 +78,19 @@ export interface ExternalsOptions {
 
 // Fields of interest in package.json
 interface PackageJson {
+    version: string
     dependencies?: Record<string, string>
     devDependencies?: Record<string, string>
     peerDependencies?: Record<string, string>
     optionalDependencies?: Record<string, string>
 }
 
+// Get our own version
+const { version } = createRequire(import.meta.url)('../package.json') as PackageJson
+
 // Prepare node built-in modules lists.
-// Note: node:test is currently not part of builtinModules... and may well never be
-// (see https://github.com/nodejs/node/issues/42785)
 const nodePrefix = 'node:'
 const nodePrefixRx = /^node:/
-const builtins = {
-    all: new Set(builtinModules),
-    alwaysPrefixed: new Set(
-        builtinModules.filter(mod => nodePrefixRx.test(mod))
-    )
-}
-
-for (const extra of [ 'node:test' ]) {
-    builtins.all.add(extra)
-    builtins.alwaysPrefixed.add(extra)
-}
 
 // Files that mark the root of a workspace.
 const workspaceRootFiles = new Set([
@@ -139,13 +130,15 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
     let include: RegExp[],
         exclude: RegExp[]
 
-    const isIncluded = (id: string) => include.some(rx => rx.test(id)),
-          isExcluded = (id: string) => exclude.some(rx => rx.test(id))
+    const isIncluded = (id: string) => include.length === 0 || include.some(rx => rx.test(id)),
+          isExcluded = (id: string) => exclude.length > 0   && exclude.some(rx => rx.test(id))
 
     return {
         name: 'node-externals',
+        version,
 
         async buildStart() {
+
             // Map the include and exclude options to arrays of regexes.
             [ include, exclude ] = ([ 'include', 'exclude' ] as const).map(option =>
                 ([] as Array<string | RegExp | null | undefined | false>)
@@ -155,9 +148,9 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                             result.push(entry)
                         else if (isString(entry))
                             result.push(new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
-                        else if (entry) {
+                        else if (entry)
                             this.warn(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
-                        }
+
                         return result
                     }, [] as RegExp[])
             )
@@ -166,22 +159,25 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
             // from cwd up to the root of the git repo, the root of the monorepo,
             // or the root of the volume, whichever comes first.
             const packagePaths = ([] as string[])
-                    .concat(config['packagePath'])
+                    .concat(config.packagePath)
                     .filter(isString)
+                    .map(packagePath => path.resolve(packagePath))
             if (packagePaths.length === 0) {
                 for (
-                    let current = process.cwd(), previous: string | undefined;
+                    let current = process.cwd(), previous: string | undefined = undefined;
                     previous !== current;
                     previous = current, current = path.dirname(current)
                 ) {
-                    const entries = await fs.readdir(current, { withFileTypes: true })
+                    const entries = await fs.readdir(current, { withFileTypes: true }).catch(() => null)
+                    if (entries === null)
+                        this.error(`Could not read contents of directory ${JSON.stringify(current)}.`)
 
                     // Gather package.json files.
-                    if (entries.some(entry => entry.name === 'package.json' && entry.isFile()))
+                    if (entries!.some(entry => entry.name === 'package.json' && entry.isFile()))
                         packagePaths.push(path.join(current, 'package.json'))
 
                     // Break early if this is a git repo root or there is a known workspace root file.
-                    if (entries.some(entry =>
+                    if (entries!.some(entry =>
                         (entry.name === '.git' && entry.isDirectory())
                         || (workspaceRootFiles.has(entry.name) && entry.isFile())
                     )) {
@@ -193,18 +189,17 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
             // Gather dependencies names.
             const dependencies: Record<string, string> = {}
             for (const packagePath of packagePaths) {
+                this.addWatchFile(packagePath)
                 try {
                     const json = (await fs.readFile(packagePath)).toString()
                     try {
-                        const pkg: PackageJson = JSON.parse(json)
+                        const pkg = JSON.parse(json) as PackageJson
                         Object.assign(dependencies,
                             config.deps     ? pkg.dependencies         : undefined,
                             config.devDeps  ? pkg.devDependencies      : undefined,
                             config.peerDeps ? pkg.peerDependencies     : undefined,
                             config.optDeps  ? pkg.optionalDependencies : undefined
                         )
-
-                        this.addWatchFile(packagePath)
 
                         // Break early if this is a npm/yarn workspace root.
                         if ('workspaces' in pkg)
@@ -225,32 +220,33 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                 }
             }
 
+            // Add all dependencies as an include RegEx.
             const names = Object.keys(dependencies)
             if (names.length > 0)
                 include.push(new RegExp('^(?:' + names.join('|') + ')(?:/.+)?$'))
         },
 
-        async resolveId(id) {
-            // Ignore already resolved ids, relative imports and virtual modules.
-            if (/^(?:\0|\.{0,2}\/)/.test(id) || path.isAbsolute(id))
+        async resolveId(specifier) {
+            // Ignore absolute (already resolved) ids, relative imports and virtual modules.
+            if (/^(?:\0|\.{0,2}\/)/.test(specifier) || path.isAbsolute(specifier))
                 return null
 
             // Handle node builtins.
-            if (id.startsWith(nodePrefix) || builtins.all.has(id)) {
-                const stripped = id.replace(nodePrefixRx, '')
+            if (isBuiltin(specifier)) {
+                const stripped = specifier.replace(nodePrefixRx, '')
                 return {
                     id: config.builtinsPrefix === 'ignore'
-                        ? id
-                        : config.builtinsPrefix === 'add' || builtins.alwaysPrefixed.has(id)
+                        ? specifier
+                        : config.builtinsPrefix === 'add' || (specifier.startsWith(nodePrefix) && !isBuiltin(stripped))
                             ? nodePrefix + stripped
                             : stripped,
-                    external: (config.builtins || isIncluded(id)) && !isExcluded(id),
+                    external: (config.builtins || isIncluded(specifier)) && !isExcluded(specifier),
                     moduleSideEffects: false
                 }
             }
 
             // Handle npm dependencies.
-            return isIncluded(id) && !isExcluded(id)
+            return isIncluded(specifier) && !isExcluded(specifier)
                 ? false     // external
                 : null      // normal handling
         }
@@ -258,7 +254,4 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
 }
 
 export default nodeExternals
-export {
-    nodeExternals,              // Named export since 6.1
-    nodeExternals as externals  // For backwards compatibility
-}
+export { nodeExternals }
