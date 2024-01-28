@@ -1,8 +1,8 @@
 import test from 'ava'
 import { testProp, fc } from '@fast-check/ava'
 import type { Arbitrary } from 'fast-check'
-import { initPlugin, callHook, fixture } from './_common.js'
-import { type ExternalsOptions } from '../source/index.js'
+import { initPlugin, callHook, fixture } from './_common.ts'
+import { type ExternalsOptions } from '../source/index.ts'
 
 // Ensures tests use local package.json
 process.chdir(fixture())

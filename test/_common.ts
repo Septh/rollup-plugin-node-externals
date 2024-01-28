@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Plugin, RollupError, ObjectHook } from 'rollup'
-import { nodeExternals, type ExternalsOptions } from '../source/index.js'
+import { nodeExternals, type ExternalsOptions } from '../source/index.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 

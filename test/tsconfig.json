@@ -3,5 +3,10 @@
   "include": [
     "./_common.ts",
     "./*.test.ts"
-  ]
+  ],
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "isolatedModules": true
+  }
 }

@@ -1,5 +1,5 @@
 import test from 'ava'
-import { initPlugin, callHook, fixture } from './_common.js'
+import { initPlugin, callHook, fixture } from './_common.ts'
 
 test('npm/yarn workspaces usage', async t => {
     process.chdir(fixture('02_workspaces/npm-and-yarn/one'))

@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import test from 'ava'
-import { initPlugin, callHook, fixture } from './_common.js'
+import { initPlugin, callHook, fixture } from './_common.ts'
 
 // These two tests need to be run in sequence
 test.serial('git monorepo usage', async t => {

@@ -1,5 +1,5 @@
 import test from 'ava'
-import { initPlugin, callHook } from './_common.js'
+import { initPlugin, callHook } from './_common.ts'
 
 const testSpecifiers = {
     virtual:       [ '\\0virtual' ],
