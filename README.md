@@ -44,7 +44,6 @@ import { nodeExternals } from 'rollup-plugin-node-externals'
 
 will both work.
 
-> Note: an undocumented named export `externals` also exists that is kept in v6.1 for backwards compatibility only and will be removed in the next major version.
 
 ### Options
 You generally want to have your **runtime dependencies** (those that will be imported/required at runtime) listed under `dependencies` in `package.json`, and your **development dependencies** (those that should be bundled in by Rollup) listed under `devDependencies`.
@@ -189,24 +188,30 @@ Rollup's own `external` configuration option always takes precedence over this p
 
 ## Breaking changes
 
-### Breaking changes in version 6
+### Breaking changes in version 7
+- This package now supports the latest release of [any major version that is supported by Node.js itself](https://github.com/nodejs/Release#release-schedule).
+- The undocumented `externals` named export has been removed.
+
+### Breaking changes in previous versions
+<details><summary>Previous versions -- click to expand</summary>
+
+#### Breaking changes in version 6
 - This package is now esm-only and requires NodeJS v16+.<br />*If you need CommonJS or older NodeJS support, please stick to v5.*
 - This plugin now has a **peer-dependency** on Rollup `^3.0.0 || ^4.0.0`.<br />*If you need Rollup 2 support, please stick to v5.*
 
-<details><summary>Previous versions -- click to expand</summary>
-
-### Breaking changes in version 5
+#### Breaking changes in version 5
 - In previous versions, the `devDeps` option defaulted to `true`.<br>This was practical, but often wrong: devDependencies are meant just for that: being used when developping. Therefore, the `devDeps` option now defaults to `false`, meaning Rollup will include them in your bundle.
 - As anticipated since v4, the `builtinsPrefix` option now defaults to `'add'`.
 - The deprecated `prefixedBuiltins` option has been removed. Use `builtinsPrefix` instead.
 - `rollup-plugin-node-externals` no longer depends on the Find-Up package (while this is not a breaking change per se, it can be in some edge situations).
 - The plugin now has a _peer dependency_ on `rollup ^2.60.0 || ^3.0.0`.
 
-### Breaking changes in version 4
+#### Breaking changes in version 4
 - In previous versions, the `deps` option defaulted to `false`.<br>This was practical, but often wrong: when bundling for distribution, you want your own dependencies to be installed by the package manager alongside your package, so they should not be bundled in the code. Therefore, the `deps` option now defaults to `true`.
 - Now requires Node 14 (up from Node 12 for previous versions).
 - Now has a _peer dependency_ on `rollup ^2.60.0`.
-</summary>
+
+</details>
 
 
 ## Licence
