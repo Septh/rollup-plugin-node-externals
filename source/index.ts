@@ -130,8 +130,8 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
     let include: RegExp[],
         exclude: RegExp[]
 
-    const isIncluded = (id: string) => include.length === 0 || include.some(rx => rx.test(id)),
-          isExcluded = (id: string) => exclude.length > 0   && exclude.some(rx => rx.test(id))
+    const isIncluded = (id: string) => include.some(rx => rx.test(id)),
+          isExcluded = (id: string) => exclude.some(rx => rx.test(id))
 
     return {
         name: 'node-externals',
