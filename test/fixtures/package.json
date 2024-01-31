@@ -4,5 +4,11 @@
   },
   "devDependencies": {
     "test-dev-dep": "*"
+  },
+  "peerDependencies": {
+    "test-peer-dep": "*"
+  },
+  "optionalDependencies": {
+    "test-opt-dep": "*"
   }
 }

@@ -10,7 +10,7 @@ test('npm/yarn workspaces usage', async t => {
         'moment',       // 02_workspaces/npm-and-yarn/one/package.json
         'chalk'         // 02_workspaces/npm-and-yarn/package.json
     ]) {
-        t.false(await callHook(plugin, 'resolveId', dependency))
+        t.false(await callHook(plugin, 'resolveId', dependency, 'index.js'))
     }
 
     // Should be ignored
@@ -19,7 +19,7 @@ test('npm/yarn workspaces usage', async t => {
         'rollup',       // 02_workspaces/package.json
         'test-dep'      // ./package.json
     ]) {
-        t.is(await callHook(plugin, 'resolveId', dependency), null)
+        t.is(await callHook(plugin, 'resolveId', dependency, 'index.js'), null)
     }
 })
 
@@ -32,7 +32,7 @@ test('pnpm workspaces usage', async t => {
         'moment',       // 02_workspaces/pnpm/one/package.json
         'chalk'         // 02_workspaces/pnpm/package.json
     ]) {
-        t.false(await callHook(plugin, 'resolveId', dependency))
+        t.false(await callHook(plugin, 'resolveId', dependency, 'index.js'))
     }
 
     // Should be ignored
@@ -41,7 +41,7 @@ test('pnpm workspaces usage', async t => {
         'rollup',       // 02_workspaces/package.json
         'test-dep'      // ./package.json
     ]) {
-        t.is(await callHook(plugin, 'resolveId', dependency), null)
+        t.is(await callHook(plugin, 'resolveId', dependency, 'index.js'), null)
     }
 })
 
@@ -54,7 +54,7 @@ test('lerna usage', async t => {
         'moment',       // 02_workspaces/lerna/one/package.json
         'chalk'         // 02_workspaces/lerna/package.json
     ]) {
-        t.false(await callHook(plugin, 'resolveId', dependency))
+        t.false(await callHook(plugin, 'resolveId', dependency, 'index.js'))
     }
 
     // Should be ignored
@@ -63,6 +63,6 @@ test('lerna usage', async t => {
         'rollup',       // 02_workspaces/package.json
         'test-dep'      // ./package.json
     ]) {
-        t.is(await callHook(plugin, 'resolveId', dependency), null)
+        t.is(await callHook(plugin, 'resolveId', dependency, 'index.js'), null)
     }
 })

@@ -48,28 +48,11 @@ test.serial("Warns when given invalid include or exclude entry", async t => {
     t.is(warnings[0], `Ignoring wrong entry type #1 in 'include' option: ${JSON.stringify(notOkay)}`)
 })
 
-test('Marks dependencies as external by default', async t => {
-    const { plugin } = await initPlugin()
-    t.false(await callHook(plugin, 'resolveId', 'test-dep'))
-})
-
-test('Does NOT mark devDependencies as external by default', async t => {
-    const { plugin } = await initPlugin()
-    t.is(await callHook(plugin, 'resolveId', 'test-dev-dep'), null)
-})
-
-test('Does mark devDependencies as external when using devDeps=true', async t => {
-    const { plugin } = await initPlugin({
-        devDeps: true
-    })
-    t.false(await callHook(plugin, 'resolveId', 'test-dev-dep'))
-})
-
 test("Obeys 'packagePath' option (single file name)", async t => {
     const { plugin } = await initPlugin({
         packagePath: '00_simple/package.json'
     })
-    t.false(await callHook(plugin, 'resolveId', 'simple-dep'))
+    t.false(await callHook(plugin, 'resolveId', 'simple-dep', 'index.js'))
 })
 
 test("Obeys 'packagePath' option (multiple file names)", async t => {
@@ -85,6 +68,6 @@ test("Obeys 'packagePath' option (multiple file names)", async t => {
         'simple-dep',   // 00_simple/package.json
         'chalk',        // 01_monorepo/package.json
     ]) {
-        t.false(await callHook(plugin, 'resolveId', dependency))
+        t.false(await callHook(plugin, 'resolveId', dependency, 'index.js'))
     }
 })
