@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "dual-dep": "*"
+  },
+  "peerDependencies": {
+    "dual-dep": "*"
+  }
+}

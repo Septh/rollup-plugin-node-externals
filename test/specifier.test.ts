@@ -10,6 +10,9 @@ const specifiers = {
     subpath:       [ 'lodash', 'lodash/flatten' ],
 }
 
+// Ensures tests use local package.json
+process.chdir(fixture())
+
 test("Always ignores bundle entry point", async t => {
     const { plugin } = await initPlugin()
     t.is(await callHook(plugin, 'resolveId', './path/to/entry.js', undefined), null)
@@ -37,80 +40,72 @@ test("Always ignores relative specifiers", async t => {
     }
 })
 
+test("Always ignores bare specifiers that are not dependencies", async t => {
+    const { plugin } = await initPlugin({ deps: true, peerDeps: true, optDeps: true, devDeps: true })
+    t.is(await callHook(plugin, 'resolveId', 'not-a-dep', 'index.js'), null)
+})
+
 test("Marks dependencies external by default", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin()
     t.false(await callHook(plugin, 'resolveId', 'test-dep', 'index.js'))
 })
 
 test("Does NOT mark dependencies external when deps=false", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin({ deps: false })
     t.is(await callHook(plugin, 'resolveId', 'test-dep', 'index.js'), null)
 })
 
 test("Does NOT mark excluded dependencies external", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin({ exclude: 'test-dep' })
     t.is(await callHook(plugin, 'resolveId', 'test-dep', 'index.js'), null)
 })
 
 test("Marks peerDependencies external by default", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin()
     t.is(await callHook(plugin, 'resolveId', 'test-dev-dep', 'index.js'), null)
 })
 
 test("Does NOT mark peerDependencies external when peerDeps=false", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin({ peerDeps: false })
     t.is(await callHook(plugin, 'resolveId', 'test-dev-dep', 'index.js'), null)
 })
 
 test("Does NOT mark excluded peerDependencies external", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin({ exclude: 'test-peer-dep' })
     t.is(await callHook(plugin, 'resolveId', 'test-dev-dep', 'index.js'), null)
 })
 
 test("Marks optionalDependencies external by default", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin()
     t.false(await callHook(plugin, 'resolveId', 'test-opt-dep', 'index.js'))
 })
 
 test("Does NOT mark optionalDependencies external when optDeps=false", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin({ optDeps: false })
     t.is(await callHook(plugin, 'resolveId', 'test-dev-dep', 'index.js'), null)
 })
 
 test("Does NOT mark excluded optionalDependencies external", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin({ exclude: 'test-opt-dep' })
     t.is(await callHook(plugin, 'resolveId', 'test-dev-dep', 'index.js'), null)
 })
 
 test("Does NOT mark devDependencies external by default", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin()
     t.is(await callHook(plugin, 'resolveId', 'test-dev-dep', 'index.js'), null)
 })
 
 test("Marks devDependencies external when devDeps=true", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin({ devDeps: true })
     t.false(await callHook(plugin, 'resolveId', 'test-dev-dep', 'index.js'))
 })
 
 test("Marks included devDependencies external", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin({ include: 'test-dev-dep' })
     t.false(await callHook(plugin, 'resolveId', 'test-dev-dep', 'index.js'))
 })
 
 test("Marks dependencies/peerDependencies/optionalDependencies subpath imports external", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin()
     t.is(await callHook(plugin, 'resolveId', 'test-dep/sub',      'index.js'), false)
     t.is(await callHook(plugin, 'resolveId', 'test-peer-dep/sub', 'index.js'), false)
@@ -118,8 +113,14 @@ test("Marks dependencies/peerDependencies/optionalDependencies subpath imports e
 })
 
 test("Marks subpath imports external (with regexes)", async t => {
-    process.chdir(fixture())
     const { plugin } = await initPlugin({ include: /^test-dev-dep/ })
     t.is(await callHook(plugin, 'resolveId', 'test-dev-dep',     'index.js'), false)
     t.is(await callHook(plugin, 'resolveId', 'test-dev-dep/sub', 'index.js'), false)
+})
+
+test("External dependencies have precedence over devDependencies", async t => {
+    const { plugin } = await initPlugin({
+        packagePath: '04_dual/package.json'
+    })
+    t.false(await callHook(plugin, 'resolveId', 'dual-dep', 'index.js'))
 })
