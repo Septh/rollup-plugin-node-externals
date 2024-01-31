@@ -88,11 +88,11 @@ interface PackageJson {
 // Get our own version
 const { version } = createRequire(import.meta.url)('../package.json') as PackageJson
 
-// Prepare node built-in modules lists.
+// Node built-in prefix handling
 const nodePrefix = 'node:'
 const nodePrefixRx = /^node:/
 
-// Files that mark the root of a workspace.
+// Files that mark the root of a workspace
 const workspaceRootFiles = new Set([
     'pnpm-workspace.yaml',  // pnpm
     'lerna.json',           // Lerna
@@ -130,8 +130,8 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
     let include: RegExp[],
         exclude: RegExp[]
 
-    const isIncluded = (id: string) => include.some(rx => rx.test(id)),
-          isExcluded = (id: string) => exclude.some(rx => rx.test(id))
+    const isIncluded = (id: string) => include.length === 0 || include.some(rx => rx.test(id)),
+          isExcluded = (id: string) => exclude.length > 0   && exclude.some(rx => rx.test(id))
 
     return {
         name: 'node-externals',
@@ -226,10 +226,14 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                 include.push(new RegExp('^(?:' + names.join('|') + ')(?:/.+)?$'))
         },
 
-        async resolveId(specifier) {
-            // Ignore absolute (already resolved) ids, relative imports and virtual modules.
-            if (/^(?:\0|\.{0,2}\/)/.test(specifier) || path.isAbsolute(specifier))
+        async resolveId(specifier, importer) {
+            if (
+                !importer                               // Ignore entry points (they should always be resolved)
+                || path.isAbsolute(specifier)           // Ignore already resolved ids
+                || /^(?:\0|\.{1,2}\/)/.test(specifier)  // Ignore virtual modules and relative imports
+            ) {
                 return null
+            }
 
             // Handle node builtins.
             if (isBuiltin(specifier)) {
@@ -237,7 +241,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                 return {
                     id: config.builtinsPrefix === 'ignore'
                         ? specifier
-                        : config.builtinsPrefix === 'add' || (specifier.startsWith(nodePrefix) && !isBuiltin(stripped))
+                        : config.builtinsPrefix === 'add' || !isBuiltin(stripped)
                             ? nodePrefix + stripped
                             : stripped,
                     external: (config.builtins || isIncluded(specifier)) && !isExcluded(specifier),
