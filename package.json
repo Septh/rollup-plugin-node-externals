@@ -9,7 +9,10 @@
   ],
   "keywords": [
     "rollup",
+    "vite",
     "plugin",
+    "rollup-plugin",
+    "vite-plugin",
     "external",
     "externals",
     "node",
