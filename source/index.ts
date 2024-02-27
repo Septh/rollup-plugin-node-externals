@@ -79,6 +79,7 @@ export interface ExternalsOptions {
 // Fields of interest in package.json
 interface PackageJson {
     version: string
+    workspaces?: string[]
     dependencies?: Record<string, string>
     devDependencies?: Record<string, string>
     peerDependencies?: Record<string, string>
@@ -130,8 +131,8 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
     let include: RegExp[],
         exclude: RegExp[]
 
-    const isIncluded = (id: string) => include.length === 0 || include.some(rx => rx.test(id)),
-          isExcluded = (id: string) => exclude.length > 0   && exclude.some(rx => rx.test(id))
+    const isIncluded = (id: string) => include.length > 0 && include.some(rx => rx.test(id)),
+          isExcluded = (id: string) => exclude.length > 0 && exclude.some(rx => rx.test(id))
 
     return {
         name: 'node-externals',
@@ -169,15 +170,19 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                     previous = current, current = path.dirname(current)
                 ) {
                     const entries = await fs.readdir(current, { withFileTypes: true }).catch(() => null)
-                    if (entries === null)
-                        this.error(`Could not read contents of directory ${JSON.stringify(current)}.`)
+                    if (entries === null) {
+                        return this.error({
+                            message: `Could not read contents of directory ${JSON.stringify(current)}.`,
+                            stack: undefined
+                        })
+                    }
 
                     // Gather package.json files.
-                    if (entries!.some(entry => entry.name === 'package.json' && entry.isFile()))
+                    if (entries.some(entry => entry.name === 'package.json' && entry.isFile()))
                         packagePaths.push(path.join(current, 'package.json'))
 
                     // Break early if this is a git repo root or there is a known workspace root file.
-                    if (entries!.some(entry =>
+                    if (entries.some(entry =>
                         (entry.name === '.git' && entry.isDirectory())
                         || (workspaceRootFiles.has(entry.name) && entry.isFile())
                     )) {
@@ -189,9 +194,8 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
             // Gather dependencies names.
             const dependencies: Record<string, string> = {}
             for (const packagePath of packagePaths) {
-                this.addWatchFile(packagePath)
                 try {
-                    const json = (await fs.readFile(packagePath)).toString()
+                    const json = await fs.readFile(packagePath).then(buffer => buffer.toString())
                     try {
                         const pkg = JSON.parse(json) as PackageJson
                         Object.assign(dependencies,
@@ -201,8 +205,11 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                             config.optDeps  ? pkg.optionalDependencies : undefined
                         )
 
+                        // Watch this package.json
+                        this.addWatchFile(packagePath)
+
                         // Break early if this is a npm/yarn workspace root.
-                        if ('workspaces' in pkg)
+                        if (Array.isArray(pkg.workspaces) && pkg.workspaces.length > 0)
                             break
                     }
                     catch {
@@ -226,33 +233,36 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                 include.push(new RegExp('^(?:' + names.join('|') + ')(?:/.+)?$'))
         },
 
-        async resolveId(specifier, importer) {
-            if (
-                !importer                               // Ignore entry points (they should always be resolved)
-                || path.isAbsolute(specifier)           // Ignore already resolved ids
-                || /^(?:\0|\.{1,2}\/)/.test(specifier)  // Ignore virtual modules and relative imports
-            ) {
-                return null
-            }
-
-            // Handle node builtins.
-            if (isBuiltin(specifier)) {
-                const stripped = specifier.replace(nodePrefixRx, '')
-                return {
-                    id: config.builtinsPrefix === 'ignore'
-                        ? specifier
-                        : config.builtinsPrefix === 'add' || !isBuiltin(stripped)
-                            ? nodePrefix + stripped
-                            : stripped,
-                    external: (config.builtins || isIncluded(specifier)) && !isExcluded(specifier),
-                    moduleSideEffects: false
+        resolveId: {
+            order: 'pre',
+            async handler(specifier, importer) {
+                if (
+                    !importer                               // Ignore entry points (they should always be resolved)
+                    || path.isAbsolute(specifier)           // Ignore already resolved ids
+                    || /^(?:\0|\.{1,2}\/)/.test(specifier)  // Ignore virtual modules and relative imports
+                ) {
+                    return null
                 }
-            }
 
-            // Handle npm dependencies.
-            return isIncluded(specifier) && !isExcluded(specifier)
-                ? false     // external
-                : null      // normal handling
+                // Handle node builtins.
+                if (isBuiltin(specifier)) {
+                    const stripped = specifier.replace(nodePrefixRx, '')
+                    return {
+                        id: config.builtinsPrefix === 'ignore'
+                            ? specifier
+                            : config.builtinsPrefix === 'add' || !isBuiltin(stripped)
+                                ? nodePrefix + stripped
+                                : stripped,
+                        external: (config.builtins || isIncluded(specifier)) && !isExcluded(specifier),
+                        moduleSideEffects: false
+                    }
+                }
+
+                // Handle npm dependencies.
+                return isIncluded(specifier) && !isExcluded(specifier)
+                    ? false     // external
+                    : null      // normal handling
+            }
         }
     }
 }
