@@ -1,16 +1,16 @@
 import test from 'ava'
-import { initPlugin, callHook, fixture } from './_common.ts'
+import { initPlugin, fixture } from './_common.ts'
 
 test('npm/yarn workspaces usage', async t => {
     process.chdir(fixture('02_workspaces/npm-and-yarn/one'))
-    const { plugin } = await initPlugin()
+    const context = await initPlugin()
 
     // Should be external
     for (const dependency of [
         'moment',       // 02_workspaces/npm-and-yarn/one/package.json
         'chalk'         // 02_workspaces/npm-and-yarn/package.json
     ]) {
-        t.false(await callHook(plugin, 'resolveId', dependency, 'index.js'))
+        t.false(await context.resolveId(dependency, 'index.js'))
     }
 
     // Should be ignored
@@ -19,20 +19,20 @@ test('npm/yarn workspaces usage', async t => {
         'rollup',       // 02_workspaces/package.json
         'test-dep'      // ./package.json
     ]) {
-        t.is(await callHook(plugin, 'resolveId', dependency, 'index.js'), null)
+        t.is(await context.resolveId(dependency, 'index.js'), null)
     }
 })
 
 test('pnpm workspaces usage', async t => {
     process.chdir(fixture('02_workspaces/pnpm/one'))
-    const { plugin } = await initPlugin()
+    const context = await initPlugin()
 
     // Should be external
     for (const dependency of [
         'moment',       // 02_workspaces/pnpm/one/package.json
         'chalk'         // 02_workspaces/pnpm/package.json
     ]) {
-        t.false(await callHook(plugin, 'resolveId', dependency, 'index.js'))
+        t.false(await context.resolveId(dependency, 'index.js'))
     }
 
     // Should be ignored
@@ -41,20 +41,20 @@ test('pnpm workspaces usage', async t => {
         'rollup',       // 02_workspaces/package.json
         'test-dep'      // ./package.json
     ]) {
-        t.is(await callHook(plugin, 'resolveId', dependency, 'index.js'), null)
+        t.is(await context.resolveId(dependency, 'index.js'), null)
     }
 })
 
 test('lerna usage', async t => {
     process.chdir(fixture('02_workspaces/lerna/one'))
-    const { plugin } = await initPlugin()
+    const plugin = await initPlugin()
 
     // Should be external
     for (const dependency of [
         'moment',       // 02_workspaces/lerna/one/package.json
         'chalk'         // 02_workspaces/lerna/package.json
     ]) {
-        t.false(await callHook(plugin, 'resolveId', dependency, 'index.js'))
+        t.false(await plugin.resolveId(dependency, 'index.js'))
     }
 
     // Should be ignored
@@ -63,6 +63,6 @@ test('lerna usage', async t => {
         'rollup',       // 02_workspaces/package.json
         'test-dep'      // ./package.json
     ]) {
-        t.is(await callHook(plugin, 'resolveId', dependency, 'index.js'), null)
+        t.is(await plugin.resolveId(dependency, 'index.js'), null)
     }
 })

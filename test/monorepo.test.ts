@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import test from 'ava'
-import { initPlugin, callHook, fixture } from './_common.ts'
+import { initPlugin, fixture } from './_common.ts'
 
 // These two tests need to be run in sequence
 test.serial('git monorepo usage', async t => {
@@ -8,14 +8,14 @@ test.serial('git monorepo usage', async t => {
     process.chdir(fixture('01_monorepo/one'))
 
     // Should gather dependencies up to ./test/fixtures/01_monorepo
-    const { plugin } = await initPlugin()
+    const context = await initPlugin()
 
     // Should be external
     for (const dependency of [
         'moment',       // dependency in ./test/fixtures/01_monorepo/one/package.json (picked)
         'chalk'         // dependency in ./test/fixtures/01_monorepo/package.json (picked)
     ]) {
-        t.false(await callHook(plugin, 'resolveId', dependency, 'index.js'))
+        t.false(await context.resolveId(dependency, 'index.js'))
     }
 
     // Should be ignored
@@ -23,7 +23,7 @@ test.serial('git monorepo usage', async t => {
         'react',        // dependency in ./test/fixtures/01_monorepo/two/package.json (not picked)
         'test-dep'      // dependency in ./test/fixtures/package.json (not picked)
     ]) {
-        t.is(await callHook(plugin, 'resolveId', dependency, 'index.js'), null)
+        t.is(await context.resolveId(dependency, 'index.js'), null)
     }
 })
 
@@ -32,7 +32,7 @@ test.serial('non-git monorepo usage', async t => {
     process.chdir(fixture('01_monorepo/one'))
 
     // Should gather dependencies up to . !
-    const { plugin } = await initPlugin()
+    const context = await initPlugin()
 
     // Should be external
     for (const dependency of [
@@ -41,13 +41,13 @@ test.serial('non-git monorepo usage', async t => {
         'test-dep',     // dependency in ./test/fixtures/package.json (picked)
         'rollup',       // peer dependency in ./package.json (picked !)
     ]) {
-        t.false(await callHook(plugin, 'resolveId', dependency, 'index.js'))
+        t.false(await context.resolveId(dependency, 'index.js'))
     }
 
     // Should be ignored
     for (const dependency of [
         'react'         // dependency in ./test/fixtures/01_monorepo/two/package.json (not picked)
     ]) {
-        t.is(await callHook(plugin, 'resolveId', dependency, 'index.js'), null)
+        t.is(await context.resolveId(dependency, 'index.js'), null)
     }
 })

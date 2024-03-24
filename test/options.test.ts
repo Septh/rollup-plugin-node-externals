@@ -1,7 +1,7 @@
 import test from 'ava'
 import { testProp, fc } from '@fast-check/ava'
 import type { Arbitrary } from 'fast-check'
-import { initPlugin, callHook, fixture } from './_common.ts'
+import { initPlugin, fixture } from './_common.ts'
 import { type ExternalsOptions } from '../source/index.ts'
 
 // Ensures tests use local package.json
@@ -35,28 +35,29 @@ testProp(
     }
 )
 
-// Must be serial because it uses the 'warnings' global in _common.ts.
-test.serial("Warns when given invalid include or exclude entry", async t => {
+test("Warns when given invalid include or exclude entry", async t => {
     const okay = 'some_dep' // string is ok
     const notOkay = 1       // number is not (unless 0, which is falsy)
 
-    const { warnings } = await initPlugin({
-        include: [ okay, notOkay as any ]
+    const context = await initPlugin({
+        include: [ okay, notOkay as any ],
+        exclude: [ okay, notOkay as any ],
     })
 
-    t.is(warnings.length, 1)
-    t.is(warnings[0], `Ignoring wrong entry type #1 in 'include' option: ${JSON.stringify(notOkay)}`)
+    t.is(context.warnings.length, 2)
+    t.is(context.warnings[0], `Ignoring wrong entry type #1 in 'include' option: ${JSON.stringify(notOkay)}`)
+    t.is(context.warnings[1], `Ignoring wrong entry type #1 in 'exclude' option: ${JSON.stringify(notOkay)}`)
 })
 
 test("Obeys 'packagePath' option (single file name)", async t => {
-    const { plugin } = await initPlugin({
+    const context = await initPlugin({
         packagePath: '00_simple/package.json'
     })
-    t.false(await callHook(plugin, 'resolveId', 'simple-dep', 'index.js'))
+    t.false(await context.resolveId('simple-dep', 'index.js'))
 })
 
 test("Obeys 'packagePath' option (multiple file names)", async t => {
-    const { plugin } = await initPlugin({
+    const context = await initPlugin({
         packagePath: [
             '00_simple/package.json',
             '01_monorepo/package.json'
@@ -68,6 +69,6 @@ test("Obeys 'packagePath' option (multiple file names)", async t => {
         'simple-dep',   // 00_simple/package.json
         'chalk',        // 01_monorepo/package.json
     ]) {
-        t.false(await callHook(plugin, 'resolveId', dependency, 'index.js'))
+        t.false(await context.resolveId(dependency, 'index.js'))
     }
 })

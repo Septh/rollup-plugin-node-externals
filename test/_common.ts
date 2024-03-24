@@ -1,52 +1,63 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Plugin, RollupError, ObjectHook } from 'rollup'
+import type { Plugin, RollupError, ObjectHook, PluginContextMeta, PluginHooks, PluginContext, NormalizedInputOptions } from 'rollup'
 import { nodeExternals, type ExternalsOptions } from '../source/index.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const warnings: string[] = []
-const fakePluginContext = {
-    meta: {
-        watchMode: false
-    },
+class MockPluginContext {
+    private readonly externals: Plugin
+    readonly warnings: string[]
+    readonly meta: PluginContextMeta
+
+    constructor(externals: Plugin) {
+        this.externals = externals
+        this.warnings = []
+        this.meta = {
+            rollupVersion: '4.9.6',
+            watchMode: false
+        }
+    }
+
+    async buildStart() {
+        let { buildStart } = this.externals
+        if (typeof buildStart === 'object')
+            buildStart = buildStart.handler
+        if (typeof buildStart === 'function')
+            return await buildStart.call(this as any, {} as NormalizedInputOptions)
+        throw new Error('Ooops')
+    }
+
+    async resolveId(specifier: string, importer: string | undefined) {
+        let { resolveId } = this.externals
+        if (typeof resolveId === 'object')
+            resolveId = resolveId.handler
+        if (typeof resolveId === 'function')
+            return await resolveId.call(this as any, specifier, importer, { attributes: {}, isEntry: typeof importer === 'string' ? false : true })
+        throw new Error('Ooops')
+    }
 
     error(err: string | RollupError): never {
         const message: string = typeof err === 'string'
             ? err
             : err.message
         throw new Error(message)
-    },
+    }
 
     warn(message: string): void {
-        warnings.push(message)
-    },
+        this.warnings.push(message)
+    }
 
     addWatchFile(_file: string) {
         // nop
     }
 }
 
-// node-externals only implements these hooks
-type ImplementedHooks =
-    | 'buildStart'
-    | 'resolveId'
-
-export async function callHook(plugin: Plugin, hookName: ImplementedHooks, ...args: any[]) {
-    const hook = plugin[hookName] as ObjectHook<(this: typeof fakePluginContext, ...args: any) => any>
-    if (typeof hook === 'function')
-        return hook.apply(fakePluginContext, args)
-    if (typeof hook === 'object' && typeof hook.handler === 'function')
-        return hook.handler.apply(fakePluginContext, args)
-    throw new Error('Ooops')
-}
-
-export async function initPlugin(options: ExternalsOptions = {}): Promise<{ plugin: Plugin, warnings: string[] }> {
-    warnings.splice(0, Infinity)
-
-    const plugin = nodeExternals(options)
-    await callHook(plugin, 'buildStart')
-    return { plugin, warnings }
+export async function initPlugin(options: ExternalsOptions = {}) {
+    const plugin = await nodeExternals(options)
+    const context = new MockPluginContext(plugin)
+    await context.buildStart()
+    return context
 }
 
 export function fixture(...parts: string[]) {
