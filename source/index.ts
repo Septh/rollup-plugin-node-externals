@@ -78,6 +78,7 @@ export interface ExternalsOptions {
 
 // Fields of interest in package.json
 interface PackageJson {
+    name: string
     version: string
     workspaces?: string[]
     dependencies?: Record<string, string>
@@ -86,12 +87,8 @@ interface PackageJson {
     optionalDependencies?: Record<string, string>
 }
 
-// Get our own version
-const { version } = createRequire(import.meta.url)('../package.json') as PackageJson
-
-// Node built-in prefix handling
-const nodePrefix = 'node:'
-const nodePrefixRx = /^node:/
+// Get our own name and version
+const { name, version } = createRequire(import.meta.url)('../package.json') as PackageJson
 
 // Files that mark the root of a workspace
 const workspaceRootFiles = new Set([
@@ -135,25 +132,24 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
           isExcluded = (id: string) => exclude.length > 0 && exclude.some(rx => rx.test(id))
 
     return {
-        name: 'node-externals',
+        name: name.replace(/^rollup-plugin-/, ''),
         version,
 
         async buildStart() {
 
             // Map the include and exclude options to arrays of regexes.
-            [ include, exclude ] = ([ 'include', 'exclude' ] as const).map(option =>
-                ([] as Array<string | RegExp | null | undefined | false>)
-                    .concat(config[option])
-                    .reduce((result, entry, index) => {
-                        if (entry instanceof RegExp)
-                            result.push(entry)
-                        else if (isString(entry))
-                            result.push(new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
-                        else if (entry)
-                            this.warn(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
+            [ include, exclude ] = ([ 'include', 'exclude' ] as const).map(option => ([] as Array<MaybeFalsy<string | RegExp>>)
+                .concat(config[option])
+                .reduce((result, entry, index) => {
+                    if (entry instanceof RegExp)
+                        result.push(entry)
+                    else if (isString(entry))
+                        result.push(new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
+                    else if (entry)
+                        this.warn(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
 
-                        return result
-                    }, [] as RegExp[])
+                    return result
+                }, [] as RegExp[])
             )
 
             // Populate the packagePath option if not given by getting all package.json files
@@ -169,10 +165,10 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                     previous !== current;
                     previous = current, current = path.dirname(current)
                 ) {
-                    const entries = await fs.readdir(current, { withFileTypes: true }).catch(() => null)
-                    if (entries === null) {
+                    const entries = await fs.readdir(current, { withFileTypes: true }).catch(({ code }: NodeJS.ErrnoException) => code)
+                    if (isString(entries) || !entries) {
                         return this.error({
-                            message: `Could not read contents of directory ${JSON.stringify(current)}.`,
+                            message: `Could not read directory ${JSON.stringify(current)}, error: ${entries || 'UNKNOWN'}.`,
                             stack: undefined
                         })
                     }
@@ -183,8 +179,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
 
                     // Break early if this is a git repo root or there is a known workspace root file.
                     if (entries.some(entry =>
-                        (entry.name === '.git' && entry.isDirectory())
-                        || (workspaceRootFiles.has(entry.name) && entry.isFile())
+                        (entry.name === '.git' && entry.isDirectory()) || (workspaceRootFiles.has(entry.name) && entry.isFile())
                     )) {
                         break
                     }
@@ -194,34 +189,33 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
             // Gather dependencies names.
             const dependencies: Record<string, string> = {}
             for (const packagePath of packagePaths) {
+                const buffer = await fs.readFile(packagePath).catch(({ code }: NodeJS.ErrnoException) => code)
+                if (isString(buffer) || !buffer) {
+                    return this.error({
+                        message: `Cannot read file ${JSON.stringify(packagePath)}, error: ${buffer || 'UNKNOWN'}.`,
+                        stack: undefined
+                    })
+                }
+
                 try {
-                    const json = await fs.readFile(packagePath).then(buffer => buffer.toString())
-                    try {
-                        const pkg = JSON.parse(json) as PackageJson
-                        Object.assign(dependencies,
-                            config.deps     ? pkg.dependencies         : undefined,
-                            config.devDeps  ? pkg.devDependencies      : undefined,
-                            config.peerDeps ? pkg.peerDependencies     : undefined,
-                            config.optDeps  ? pkg.optionalDependencies : undefined
-                        )
+                    const pkg = JSON.parse(buffer.toString()) as PackageJson
+                    Object.assign(dependencies,
+                        config.deps     ? pkg.dependencies         : undefined,
+                        config.devDeps  ? pkg.devDependencies      : undefined,
+                        config.peerDeps ? pkg.peerDependencies     : undefined,
+                        config.optDeps  ? pkg.optionalDependencies : undefined
+                    )
 
-                        // Watch this package.json
-                        this.addWatchFile(packagePath)
+                    // Watch this package.json
+                    this.addWatchFile(packagePath)
 
-                        // Break early if this is a npm/yarn workspace root.
-                        if (Array.isArray(pkg.workspaces) && pkg.workspaces.length > 0)
-                            break
-                    }
-                    catch {
-                        this.error({
-                            message: `File ${JSON.stringify(packagePath)} does not look like a valid package.json file.`,
-                            stack: undefined
-                        })
-                    }
+                    // Break early if this is an npm/yarn workspace root.
+                    if (Array.isArray(pkg.workspaces) && pkg.workspaces.length > 0)
+                        break
                 }
                 catch {
                     this.error({
-                        message: `Cannot read file ${JSON.stringify(packagePath)}`,
+                        message: `File ${JSON.stringify(packagePath)} does not look like a valid package.json file.`,
                         stack: undefined
                     })
                 }
@@ -235,23 +229,23 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
 
         resolveId: {
             order: 'pre',
-            async handler(specifier, importer) {
+            async handler(specifier, importer, { isEntry }) {
                 if (
-                    !importer                               // Ignore entry points (they should always be resolved)
-                    || path.isAbsolute(specifier)           // Ignore already resolved ids
+                    isEntry                                 // Ignore entry points (they should always be resolved)
                     || /^(?:\0|\.{1,2}\/)/.test(specifier)  // Ignore virtual modules and relative imports
+                    || path.isAbsolute(specifier)           // Ignore already resolved ids
                 ) {
                     return null
                 }
 
                 // Handle node builtins.
                 if (isBuiltin(specifier)) {
-                    const stripped = specifier.replace(nodePrefixRx, '')
+                    const stripped = specifier.replace(/^node:/, '')
                     return {
                         id: config.builtinsPrefix === 'ignore'
                             ? specifier
                             : config.builtinsPrefix === 'add' || !isBuiltin(stripped)
-                                ? nodePrefix + stripped
+                                ? 'node:' + stripped
                                 : stripped,
                         external: (config.builtins || isIncluded(specifier)) && !isExcluded(specifier),
                         moduleSideEffects: false

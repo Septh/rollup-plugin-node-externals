@@ -20,6 +20,7 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
+        "removeComments": true,
 
         // Type checking
         "strict": true,
