@@ -1,11 +1,11 @@
 # rollup-plugin-node-externals
-A Rollup plugin that automatically declares NodeJS built-in modules as `external`. Also handles npm dependencies, devDependencies, peerDependencies and optionalDependencies.
+A Rollup/Vite plugin that automatically declares NodeJS built-in modules as `external`. Also handles npm dependencies, devDependencies, peerDependencies and optionalDependencies.
 
 Works in npm/yarn/pnpm/lerna monorepos too!
 
 
 ## Why you need this
-<details><summary>(click to expand)</summary>
+<details><summary>(click to read)</summary>
 
 By default, Rollup doesn't know a thing about NodeJS, so trying to bundle simple things like `import path from 'node:path'` in your code generates an `Unresolved dependencies` warning.
 
@@ -109,10 +109,10 @@ Set the `builtins` option to `false` if you'd like to use some shims/polyfills f
 
 #### builtinsPrefix?: 'add' | 'strip' | 'ignore' = 'add'
 How to handle the `node:` scheme used in recent versions of Node (i.e., `import path from 'node:path'`).
-- If `add` (the default, recommended), the `node:` prefix is always added. In effect, this homogenizes all your imports of Node builtins to their prefixed version.
-- If `strip`, the prefix is always removed. In effect, this homogenizes all your imports of Node builtins to their unprefixed version.
+- If `add` (the default, recommended), the `node:` scheme is always added. In effect, this dedupes your imports of Node builtins by homogenizing their names to their schemed version.
+- If `strip`, the scheme is always removed. In effect, this dedupes your imports of Node builtins by homogenizing their names to their unschemed version. Schemed-only builtins like `node:test` are not stripped.
 - `ignore` will simply leave all builtins imports as written in your code.
-> _Note that prefix handling is always applied, regardless of the `builtins` options being enabled or not._
+> _Note that scheme handling is always applied, regardless of the `builtins` options being enabled or not._
 
 #### packagePath?: string | string[] = []
 If you're working with monorepos, the `packagePath` option is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all `package.json` files in parent directories recursively until either the root git directory is reached or until no other `package.json` can be found.
@@ -148,14 +148,14 @@ nodeExternals({
 - Subpath imports are supported with regexes, meaning that `include: /^lodash/` will externalize `lodash` and also `lodash/map`, `lodash/merge`, etc.
 
 ### 2/ This plugin is not _that_ smart
-It uses an exact match against your imports _as written in your code_, so if your are using some kind of path substitution, eg.:
+It uses an exact match against your imports _as written in your code_. No resolving of path aliases or substitutions is made:
 
 ```js
-// In your code, say '@/' is mapped to some directory:
-import something from '@/mylib'
+// In your code, say '@/lib' is an alias for node_modules/deep/path/to/some/lib:
+import something from '@/lib'
 ```
 
-and you don't want `mylib` bundled in, then write:
+If you don't want `lib` bundled in, then write:
 
 ```js
 // In rollup.config.js:
@@ -180,17 +180,48 @@ export default {
 }
 ```
 
-As a general rule of thumb, you might want to always make this plugin the first one in the `plugins` array.
+As a general rule of thumb, you will want to always make this plugin the first one in the `plugins` array.
 
 ### 4/ Rollup rules
 Rollup's own `external` configuration option always takes precedence over this plugin. This is intentional.
+
+### 5/ Using with Vite
+While this plugin has always been compatible with Vite, it was previously necessary to use the following `vite.config.js` to make it work reliably in every situations:
+
+```js
+import { defineConfig } from 'vite'
+import nodeExternals from 'rollup-plugin-node-externals'
+
+export default defineConfig({
+  ...
+  plugins: [
+    { enforce: 'pre', ...nodeExternals() },
+    // other plugins follow
+  ]
+})
+```
+
+Since version 7.1, this is no longer necessary and you can use the normal syntax instead. You still want to keep this plugin early in the `plugins` array, though.
+
+```js
+import { defineConfig } from 'vite'
+import nodeExternals from 'rollup-plugin-node-externals'
+
+export default defineConfig({
+  ...
+  plugins: [
+    nodeExternals()
+    // other plugins follow
+  ]
+})
+```
 
 
 ## Breaking changes
 
 ### Breaking changes in version 7
-- This package now supports the latest release of [any major version that is supported by Node.js itself](https://github.com/nodejs/Release#release-schedule).
-- The undocumented `externals` named export has been removed.
+- This package now only supports the [Maintenance, LTS and Current versions](https://github.com/nodejs/Release#release-schedule) of Node.js.
+- The previously undocumented `externals` named export has been removed.
 
 ### Breaking changes in previous versions
 <details><summary>Previous versions -- click to expand</summary>
