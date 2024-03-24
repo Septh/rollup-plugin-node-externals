@@ -2,3 +2,4 @@ node_modules/
 dist/
 out/
 zz*
+/.np-config.json

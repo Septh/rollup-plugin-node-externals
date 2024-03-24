@@ -74,8 +74,5 @@
     "nodeArguments": [
       "--import=@septh/ts-run/register"
     ]
-  },
-  "np": {
-    "yarn": false
   }
 }
