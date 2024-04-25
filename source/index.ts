@@ -118,15 +118,15 @@ const isString = (str: unknown): str is string =>
     typeof str === 'string' && str.length > 0
 
 /**
- * A Rollup plugin that automatically declares NodeJS built-in modules,
+ * A Rollup/Vite plugin that automatically declares NodeJS built-in modules,
  * and optionally npm dependencies, as 'external'.
  */
 function nodeExternals(options: ExternalsOptions = {}): Plugin {
 
     const config: Config = { ...defaults, ...options }
 
-    let include: RegExp[],
-        exclude: RegExp[]
+    let include: RegExp[] = [],     // Initialized to empty arrays
+        exclude: RegExp[] = []      // as a workaround to https://github.com/Septh/rollup-plugin-node-externals/issues/30
 
     const isIncluded = (id: string) => include.length > 0 && include.some(rx => rx.test(id)),
           isExcluded = (id: string) => exclude.length > 0 && exclude.some(rx => rx.test(id))
@@ -134,6 +134,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
     return {
         name: name.replace(/^rollup-plugin-/, ''),
         version,
+        enforce: 'pre',     // For Vite
 
         async buildStart() {
 
@@ -258,7 +259,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                     : null      // normal handling
             }
         }
-    }
+    } as Plugin & { enforce: 'pre' | 'post' }
 }
 
 export default nodeExternals
