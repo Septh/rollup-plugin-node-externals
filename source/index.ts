@@ -90,7 +90,7 @@ interface PackageJson {
 // Get our own name and version
 const { name, version } = createRequire(import.meta.url)('../package.json') as PackageJson
 
-// Files that mark the root of a workspace
+// Files that mark the root of a monorepo
 const workspaceRootFiles = new Set([
     'pnpm-workspace.yaml',  // pnpm
     'lerna.json',           // Lerna
@@ -125,8 +125,8 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
 
     const config: Config = { ...defaults, ...options }
 
-    let include: RegExp[] = [],     // Initialized to empty arrays
-        exclude: RegExp[] = []      // as a workaround to https://github.com/Septh/rollup-plugin-node-externals/issues/30
+    let include: RegExp[] = [],     // Initialized to empty arrays as a workaround
+        exclude: RegExp[] = []      // to https://github.com/Septh/rollup-plugin-node-externals/issues/30
 
     const isIncluded = (id: string) => include.length > 0 && include.some(rx => rx.test(id)),
           isExcluded = (id: string) => exclude.length > 0 && exclude.some(rx => rx.test(id))
@@ -157,9 +157,9 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
             // from cwd up to the root of the git repo, the root of the monorepo,
             // or the root of the volume, whichever comes first.
             const packagePaths = ([] as string[])
-                    .concat(config.packagePath)
-                    .filter(isString)
-                    .map(packagePath => path.resolve(packagePath))
+                .concat(config.packagePath)
+                .filter(isString)
+                .map(packagePath => path.resolve(packagePath))
             if (packagePaths.length === 0) {
                 for (
                     let current = process.cwd(), previous: string | undefined = undefined;

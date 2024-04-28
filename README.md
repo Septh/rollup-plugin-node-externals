@@ -115,7 +115,7 @@ How to handle the `node:` scheme used in recent versions of Node (i.e., `import 
 > _Note that scheme handling is always applied, regardless of the `builtins` options being enabled or not._
 
 #### packagePath?: string | string[] = []
-If you're working with monorepos, the `packagePath` option is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all `package.json` files in parent directories recursively until either the root git directory is reached or until no other `package.json` can be found.
+If you're working with monorepos, the `packagePath` option is made for you. It can take a path, or an array of paths, to your package.json file(s). If not specified, the default is to start with the current directory's package.json then go up scan for all `package.json` files in parent directories recursively until either the root git directory is reached, the root of the monorepo is reached, or no other `package.json` can be found.
 
 #### deps?: boolean = true<br>devDeps?: boolean = false<br>peerDeps?: boolean = true<br>optDeps?: boolean = true
 Set the `deps`, `devDeps`, `peerDeps` and `optDeps` options to `false` to prevent the corresponding dependencies from being externalized, therefore letting Rollup bundle them with your code.
@@ -151,7 +151,7 @@ nodeExternals({
 It uses an exact match against your imports _as written in your code_. No resolving of path aliases or substitutions is made:
 
 ```js
-// In your code, say '@/lib' is an alias for node_modules/deep/path/to/some/lib:
+// In your code, say '@/lib' is an alias for source/deep/path/to/some/lib:
 import something from '@/lib'
 ```
 
@@ -160,7 +160,7 @@ If you don't want `lib` bundled in, then write:
 ```js
 // In rollup.config.js:
 nodeExternals({
-    include: '@/mylib'
+    include: '@/lib'
 })
 ```
 
@@ -180,13 +180,13 @@ export default {
 }
 ```
 
-As a general rule of thumb, you will want to always make this plugin the first one in the `plugins` array.
+Note that as of version 7, this plugin's `resolveId` hook has a `order: 'pre'` property that will make Rollup call it very early in the module resolution process. Nevertheless, it is best to always make this plugin the first one in the `plugins` array.
 
 ### 4/ Rollup rules
 Rollup's own `external` configuration option always takes precedence over this plugin. This is intentional.
 
 ### 5/ Using with Vite
-While this plugin has always been compatible with Vite, it was previously necessary to use the following `vite.config.js` to make it work reliably in every situations:
+While this plugin has always been compatible with Vite, it was previously necessary to use the following `vite.config.js` to make it work reliably in every situation:
 
 ```js
 import { defineConfig } from 'vite'
