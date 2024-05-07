@@ -30,6 +30,16 @@
     "type": "git",
     "url": "https://github.com/Septh/rollup-plugin-node-externals"
   },
+  "funding": [
+    {
+      "type": "patreon",
+      "url": "https://patreon.com/Septh"
+    },
+    {
+      "type": "paypal",
+      "url": "https://paypal.me/septh07"
+    }
+  ],
   "license": "MIT",
   "engines": {
     "node": ">= 21 || ^20.6.0 || ^18.19.0"
