@@ -6,6 +6,10 @@ import type { Plugin } from 'rollup'
 type MaybeFalsy<T> = (T) | undefined | null | false
 type MaybeArray<T> = (T) | (T)[]
 
+interface ViteCompatiblePlugin extends Plugin {
+    enforce: 'pre' | 'post'
+}
+
 export interface ExternalsOptions {
 
     /**
@@ -134,7 +138,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
     return {
         name: name.replace(/^rollup-plugin-/, ''),
         version,
-        enforce: 'pre',     // For Vite
+        enforce: 'pre',
 
         async buildStart() {
 
@@ -259,7 +263,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                     : null      // normal handling
             }
         }
-    } as Plugin & { enforce: 'pre' | 'post' }
+    } as ViteCompatiblePlugin
 }
 
 export default nodeExternals
