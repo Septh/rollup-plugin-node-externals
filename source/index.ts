@@ -92,7 +92,7 @@ interface PackageJson {
 }
 
 // Get our own name and version
-const { name, version } = createRequire(import.meta.url)('../package.json') as PackageJson
+const { name, version } = createRequire(import.meta.url)('#package.json') as PackageJson
 
 // Files that mark the root of a monorepo
 const workspaceRootFiles = new Set([

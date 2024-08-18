@@ -51,6 +51,9 @@
   "type": "module",
   "exports": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "imports": {
+    "#package.json": "./package.json"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "build:dts": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly --removeComments false",
@@ -85,7 +88,7 @@
       "ts": "module"
     },
     "nodeArguments": [
-      "--import=@septh/ts-run/register"
+      "--import=@septh/ts-run"
     ]
   }
 }
