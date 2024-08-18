@@ -2,5 +2,9 @@
     "typescript.tsdk": "node_modules\\typescript\\lib",
     "javascript.preferences.importModuleSpecifierEnding": "js",
     "typescript.preferences.importModuleSpecifierEnding": "js",
-    "js/ts.implicitProjectConfig.module": "NodeNext"
+    "js/ts.implicitProjectConfig.module": "NodeNext",
+    "terminal.integrated.automationProfile.windows": {
+        "path": "pwsh.exe",
+        "icon": "terminal-powershell"
+    }
 }
