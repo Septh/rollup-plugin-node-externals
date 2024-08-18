@@ -1,6 +1,7 @@
 {
-    "files": [
-        "source/index.ts"
+    "include": [
+        "source",
+        "eslint.config.mjs"
     ],
     "compilerOptions": {
 
@@ -14,13 +15,11 @@
         "moduleResolution": "Node16",
 
         // Output
-        "outDir": "dist",
         "target": "ESNext",
         "module": "Node16",
-        "declaration": true,
-        "declarationMap": true,
         "sourceMap": true,
         "removeComments": true,
+        "noEmit": true,
 
         // Type checking
         "strict": true,
