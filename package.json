@@ -41,6 +41,7 @@
     }
   ],
   "license": "MIT",
+  "type": "module",
   "engines": {
     "node": ">= 21 || ^20.6.0 || ^18.19.0"
   },
@@ -48,9 +49,8 @@
     "dist",
     "!dist/**/*.map"
   ],
-  "type": "module",
-  "exports": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": "./dist/index.js",
   "imports": {
     "#package.json": "./package.json"
   },
@@ -67,7 +67,7 @@
     "@eslint/eslintrc": "^3.1.0",
     "@eslint/js": "^9.9.0",
     "@fast-check/ava": "^2.0.1",
-    "@septh/ts-run": "^1.0.2",
+    "@septh/ts-run": "^1.2.6",
     "@types/node": "^18.19.44",
     "@typescript-eslint/eslint-plugin": "^8.1.0",
     "@typescript-eslint/parser": "^8.1.0",
