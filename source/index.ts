@@ -95,14 +95,14 @@ interface PackageJson {
 const { name, version } = createRequire(import.meta.url)('#package.json') as PackageJson
 
 // Files that mark the root of a monorepo
-const workspaceRootFiles = new Set([
+const workspaceRootFiles = [
     'pnpm-workspace.yaml',  // pnpm
     'lerna.json',           // Lerna
     // Note: is there any interest in the following?
     // 'workspace.jsonc',      // Bit
     // 'nx.json',              // Nx
     // 'rush.json',            // Rush
-])
+]
 
 // Our defaults.
 type Config = Required<ExternalsOptions>
@@ -165,28 +165,27 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                 .filter(isString)
                 .map(packagePath => path.resolve(packagePath))
             if (packagePaths.length === 0) {
-                for (
+                loop: for (
                     let current = process.cwd(), previous: string | undefined = undefined;
                     previous !== current;
                     previous = current, current = path.dirname(current)
                 ) {
-                    const entries = await fs.readdir(current, { withFileTypes: true }).catch(({ code }: NodeJS.ErrnoException) => code)
-                    if (isString(entries) || !entries) {
-                        return this.error({
-                            message: `Could not read directory ${JSON.stringify(current)}, error: ${entries || 'UNKNOWN'}.`,
-                            stack: undefined
-                        })
-                    }
-
                     // Gather package.json files.
-                    if (entries.some(entry => entry.name === 'package.json' && entry.isFile()))
-                        packagePaths.push(path.join(current, 'package.json'))
+                    let name = path.join(current, 'package.json')
+                    let stat = await fs.stat(name).catch(() => null)
+                    if (stat?.isFile())
+                        packagePaths.push(name)
 
-                    // Break early if this is a git repo root or there is a known workspace root file.
-                    if (entries.some(entry =>
-                        (entry.name === '.git' && entry.isDirectory()) || (workspaceRootFiles.has(entry.name) && entry.isFile())
-                    )) {
+                    // Break early is this is a git repo or there is a known workspace root file.
+                    name = path.join(current, '.git')
+                    stat = await fs.stat(name).catch(() => null)
+                    if (stat?.isDirectory())
                         break
+                    for (const file of workspaceRootFiles) {
+                        name = path.join(current, file)
+                        stat = await fs.stat(name).catch(() => null)
+                        if (stat?.isFile())
+                            break loop
                     }
                 }
             }
@@ -194,10 +193,10 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
             // Gather dependencies names.
             const dependencies: Record<string, string> = {}
             for (const packagePath of packagePaths) {
-                const buffer = await fs.readFile(packagePath).catch(({ code }: NodeJS.ErrnoException) => code)
-                if (isString(buffer) || !buffer) {
+                const buffer = await fs.readFile(packagePath).catch((err: NodeJS.ErrnoException) => err)
+                if (buffer instanceof Error) {
                     return this.error({
-                        message: `Cannot read file ${JSON.stringify(packagePath)}, error: ${buffer || 'UNKNOWN'}.`,
+                        message: `Cannot read file ${packagePath}, error: ${buffer.code}.`,
                         stack: undefined
                     })
                 }
@@ -215,7 +214,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                     this.addWatchFile(packagePath)
 
                     // Break early if this is an npm/yarn workspace root.
-                    if (Array.isArray(pkg.workspaces) && pkg.workspaces.length > 0)
+                    if (Array.isArray(pkg.workspaces))
                         break
                 }
                 catch {
