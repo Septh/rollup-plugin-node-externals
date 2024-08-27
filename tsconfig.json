@@ -5,21 +5,24 @@
     ],
     "compilerOptions": {
 
+        // Node stuff
+        "module": "Node16",
+        "allowSyntheticDefaultImports": true,
+
+        // Input
+        "resolveJsonModule": true,
+        "checkJs": true,
+
+        // Output
+        "target": "ESNext",
+        "sourceMap": true,
+        "removeComments": true,
+        "noEmit": true,
+
         // Lib
         "lib": [ "ESNext" ],
         "skipLibCheck": true,
         "skipDefaultLibCheck": true,
-
-        // Input
-        "allowSyntheticDefaultImports": true,
-        "moduleResolution": "Node16",
-
-        // Output
-        "target": "ESNext",
-        "module": "Node16",
-        "sourceMap": true,
-        "removeComments": true,
-        "noEmit": true,
 
         // Type checking
         "strict": true,
