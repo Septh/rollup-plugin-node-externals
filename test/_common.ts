@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Plugin, RollupError, ObjectHook, PluginContextMeta, PluginHooks, PluginContext, NormalizedInputOptions } from 'rollup'
+import type { Plugin, RollupError, PluginContextMeta, NormalizedInputOptions } from 'rollup'
 import { nodeExternals, type ExternalsOptions } from '../source/index.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -54,7 +54,7 @@ class MockPluginContext {
 }
 
 export async function initPlugin(options: ExternalsOptions = {}) {
-    const plugin = await nodeExternals(options)
+    const plugin = nodeExternals(options)
     const context = new MockPluginContext(plugin)
     await context.buildStart()
     return context
