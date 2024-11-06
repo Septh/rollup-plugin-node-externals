@@ -1,8 +1,3 @@
 {
-    "typescript.tsdk": "node_modules\\typescript\\lib",
-    "javascript.preferences.importModuleSpecifierEnding": "js",
-    "typescript.preferences.importModuleSpecifierEnding": "js",
-    "terminal.integrated.automationProfile.windows": {
-        "path": "cmd.exe"
-    }
+    "typescript.tsdk": "node_modules/typescript/lib",
 }
