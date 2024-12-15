@@ -232,35 +232,33 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                 include.push(new RegExp('^(?:' + names.join('|') + ')(?:/.+)?$'))
         },
 
-        resolveId: {
-            async handler(specifier, importer, { isEntry }) {
-                if (
-                    isEntry                                 // Ignore entry points
-                    || /^(?:\0|\.{1,2}\/)/.test(specifier)  // Ignore virtual modules and relative imports
-                    || path.isAbsolute(specifier)           // Ignore already resolved ids
-                ) {
-                    return null
-                }
-
-                // Handle node builtins.
-                if (isBuiltin(specifier)) {
-                    const stripped = specifier.replace(/^node:/, '')
-                    return {
-                        id: config.builtinsPrefix === 'ignore'
-                            ? specifier
-                            : config.builtinsPrefix === 'add' || !isBuiltin(stripped)
-                                ? 'node:' + stripped
-                                : stripped,
-                        external: (config.builtins || isIncluded(specifier)) && !isExcluded(specifier),
-                        moduleSideEffects: false
-                    }
-                }
-
-                // Handle npm dependencies.
-                return isIncluded(specifier) && !isExcluded(specifier)
-                    ? false     // external
-                    : null      // normal handling
+        resolveId(specifier, _, { isEntry }) {
+            if (
+                isEntry                                 // Ignore entry points
+                || /^(?:\0|\.{1,2}\/)/.test(specifier)  // Ignore virtual modules and relative imports
+                || path.isAbsolute(specifier)           // Ignore already resolved ids
+            ) {
+                return null
             }
+
+            // Handle node builtins.
+            if (isBuiltin(specifier)) {
+                const stripped = specifier.replace(/^node:/, '')
+                return {
+                    id: config.builtinsPrefix === 'ignore'
+                        ? specifier
+                        : config.builtinsPrefix === 'add' || !isBuiltin(stripped)
+                            ? 'node:' + stripped
+                            : stripped,
+                    external: (config.builtins || isIncluded(specifier)) && !isExcluded(specifier),
+                    moduleSideEffects: false
+                }
+            }
+
+            // Handle npm dependencies.
+            return isIncluded(specifier) && !isExcluded(specifier)
+                ? false     // external
+                : null      // normal handling
         }
     } as ViteCompatiblePlugin
 }
