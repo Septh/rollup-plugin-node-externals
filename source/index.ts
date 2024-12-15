@@ -233,7 +233,6 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
         },
 
         resolveId: {
-            order: 'pre',
             async handler(specifier, importer, { isEntry }) {
                 if (
                     isEntry                                 // Ignore entry points (they should always be resolved)
