@@ -152,7 +152,6 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                         result.push(new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
                     else if (entry)
                         this.warn(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
-
                     return result
                 }, [] as RegExp[])
             )
@@ -165,7 +164,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                 .filter(isString)
                 .map(packagePath => path.resolve(packagePath))
             if (packagePaths.length === 0) {
-                loop: for (
+                search: for (
                     let current = process.cwd(), previous: string | undefined = undefined;
                     previous !== current;
                     previous = current, current = path.dirname(current)
@@ -176,16 +175,18 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                     if (stat?.isFile())
                         packagePaths.push(name)
 
-                    // Break early is this is a git repo or there is a known workspace root file.
+                    // Break early if we are at the root of a git repo.
                     name = path.join(current, '.git')
                     stat = await fs.stat(name).catch(() => null)
                     if (stat?.isDirectory())
                         break
+
+                    // Break early is there is a known workspace root file.
                     for (const file of workspaceRootFiles) {
                         name = path.join(current, file)
                         stat = await fs.stat(name).catch(() => null)
                         if (stat?.isFile())
-                            break loop
+                            break search
                     }
                 }
             }
@@ -233,9 +234,9 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
 
         resolveId: {
             order: 'pre',
-            async handler(specifier, importer, { isEntry }) {
+            async handler(specifier, _, { isEntry }) {
                 if (
-                    isEntry                                 // Ignore entry points (they should always be resolved)
+                    isEntry                                 // Ignore entry points
                     || /^(?:\0|\.{1,2}\/)/.test(specifier)  // Ignore virtual modules and relative imports
                     || path.isAbsolute(specifier)           // Ignore already resolved ids
                 ) {
