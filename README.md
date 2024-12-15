@@ -28,6 +28,10 @@ So the primary goal of this plugin is simply to automatically declare all NodeJS
 As an added bonus, this plugin will also allow you to declare your dependencies (as per your local or monorepo `package.json` file(s)) as external.
 </details>
 
+## Requirements
+- Rollup >= 4 or Vite >= 5
+- NodeJS >= 21
+
 
 ## Installation
 Use your favorite package manager. Mine is [npm](https://www.npmjs.com).
@@ -229,12 +233,16 @@ export default defineConfig({
 
 ## Breaking changes
 
-### Breaking changes in version 7
-- This package now only supports the [Maintenance, LTS and Current versions](https://github.com/nodejs/Release#release-schedule) of Node.js.
-- The previously undocumented `externals` named export has been removed.
+### Breaking changes in version 8
+- Removed support for Rollup 3.
+- Removed `order: pre` from resolveId hook (see #33). Might force users who relied on this, to make sure this plugin comes first in the plugins array.
 
 ### Breaking changes in previous versions
 <details><summary>Previous versions -- click to expand</summary>
+
+### Breaking changes in version 7
+- This package now only supports the [Maintenance, LTS and Current versions](https://github.com/nodejs/Release#release-schedule) of Node.js.
+- The previously undocumented `externals` named export has been removed.
 
 #### Breaking changes in version 6
 - This package is now esm-only and requires NodeJS v16+.<br />*If you need CommonJS or older NodeJS support, please stick to v5.*
