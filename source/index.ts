@@ -233,8 +233,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
         },
 
         resolveId: {
-            order: 'pre',
-            async handler(specifier, _, { isEntry }) {
+            async handler(specifier, importer, { isEntry }) {
                 if (
                     isEntry                                 // Ignore entry points
                     || /^(?:\0|\.{1,2}\/)/.test(specifier)  // Ignore virtual modules and relative imports
