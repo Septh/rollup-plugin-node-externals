@@ -1,8 +1,8 @@
-<p align="center">
+<p>
 
 ![NPM Version](https://img.shields.io/npm/v/rollup-plugin-node-externals?label=latest)
-![Static Badge](https://img.shields.io/badge/Rollup-%3E%3D4.0.0-orange)
-![Static Badge](https://img.shields.io/badge/Vite-%3E%3D5.0.0-purple)
+![Rollup 4.0](https://img.shields.io/badge/Rollup-%3E%3D4.0.0-orange)
+![Vite 5.0](https://img.shields.io/badge/Vite-%3E%3D5.0.0-purple)
 ![NPM Downloads](https://img.shields.io/npm/dm/rollup-plugin-node-externals)
 ![NPM License](https://img.shields.io/npm/l/rollup-plugin-node-externals)
 
@@ -255,5 +255,5 @@ export default defineConfig({
 </details>
 
 
-## Licence
+## License
 MIT
