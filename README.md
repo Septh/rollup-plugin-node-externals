@@ -11,21 +11,21 @@
 # rollup-plugin-node-externals
 A Rollup/Vite plugin that automatically declares NodeJS built-in modules as `external`. Also handles npm dependencies, devDependencies, peerDependencies and optionalDependencies.
 
-Works in npm/yarn/pnpm/lerna monorepos too!
+Works in pnpm/yarn/lerna monorepos too!
 
 
 ## Why you need this
 <details><summary>(click to read)</summary>
 
-By default, Rollup doesn't know a thing about NodeJS, so trying to bundle simple things like `import path from 'node:path'` in your code generates an `Unresolved dependencies` warning.
+By default, Rollup doesn't know a thing about NodeJS, so trying to bundle simple things like `import path from 'path'` in your code results in a `Unresolved dependencies` warning.
 
-The solution here is quite simple: you must tell Rollup that the `node:path` module is in fact _external_. This way, Rollup won't try to bundle it in and rather leave the `import` statement as is (or translate it to a `require()` call if bundling for CommonJS).
+The solution here is quite simple: you must tell Rollup that the `path` module is in fact _external_. This way, Rollup won't try to bundle it in and rather leave the `import` statement as is (or translate it to a `require()` call if bundling for CommonJS).
 
-However, this must be done for each and every NodeJS built-in you happen to use in your program: `node:path`, `node:os`, `node:fs`, `node:url`, etc., which can quickly become cumbersome when done manually.
+However, this must be done for each and every NodeJS built-in you happen to use in your program: `path`, `os`, `fs`, `url`, etc., which can quickly become cumbersome when done manually.
 
 So the primary goal of this plugin is simply to automatically declare all NodeJS built-in modules as external.
 
-As an added bonus, this plugin will also allow you to declare your dependencies (as per your local or monorepo `package.json` file(s)) as external.
+As an added bonus, this plugin will also declare your dependencies (as per your local or monorepo `package.json` file(s)) as external.
 </details>
 
 ## Requirements
@@ -123,8 +123,8 @@ Set the `builtins` option to `false` if you'd like to use some shims/polyfills f
 
 #### builtinsPrefix?: 'add' | 'strip' | 'ignore' = 'add'
 How to handle the `node:` scheme used in recent versions of Node (i.e., `import path from 'node:path'`).
-- If `add` (the default, recommended), the `node:` scheme is always added. In effect, this dedupes your imports of Node builtins by homogenizing their names to their schemed version.
-- If `strip`, the scheme is always removed. In effect, this dedupes your imports of Node builtins by homogenizing their names to their unschemed version. Schemed-only builtins like `node:test` are not stripped.
+- If `add` (the default, recommended), the `node:` scheme is always added if missing. In effect, this dedupes your imports of Node builtins by homogenizing their names to their schemed version.
+- If `strip`, the scheme is always removed. In effect, this dedupes your imports of Node builtins by homogenizing their names to their unschemed version. Schemed-only builtins like `node:test` are never stripped.
 - `ignore` will simply leave all builtins imports as written in your code.
 > _Note that scheme handling is always applied, regardless of the `builtins` options being enabled or not._
 
@@ -165,11 +165,11 @@ nodeExternals({
 It uses an exact match against your imports _as written in your code_. No resolving of path aliases or substitutions is made:
 
 ```js
-// In your code, say '@/lib' is an alias for source/deep/path/to/some/lib:
+// In your code, say '@/lib' is an alias for node_modules/lib/deep/path/to/some/file.js:
 import something from '@/lib'
 ```
 
-If you don't want `lib` bundled in, then write:
+If you don't want `node_modules/lib/deep/path/to/some/file.js` bundled in, then write:
 
 ```js
 // In rollup.config.js:
@@ -194,7 +194,7 @@ export default {
 }
 ```
 
-Note that as of version 7, this plugin's `resolveId` hook has a `order: 'pre'` property that will make Rollup call it very early in the module resolution process. Nevertheless, it is best to always make this plugin the first one in the `plugins` array.
+Note that as of version 7.1, this plugin has a `enforce: 'pre'` property that will make Rollup and Vite call it very early in the module resolution process. Nevertheless, it is best to always make this plugin the first one in the `plugins` array.
 
 ### 4/ Rollup rules
 Rollup's own `external` configuration option always takes precedence over this plugin. This is intentional.
@@ -230,12 +230,15 @@ export default defineConfig({
 })
 ```
 
+> [!NOTE]
+> Make sure you use the _top-level plugins array_ in `vite.config.js` as shown above. **Using `build.rollupOptions.plugins` will probably not work**. See [#35](https://github.com/Septh/rollup-plugin-node-externals/issues/35) for details.
+
 
 ## Breaking changes
 
 ### Breaking changes in version 8
 - Removed support for Rollup 3.
-- Removed `order: pre` from resolveId hook (see #33). Might force users who relied on this, to make sure this plugin comes first in the plugins array.
+- Removed `order: pre` from `resolveId` hook (see [#33](https://github.com/Septh/rollup-plugin-node-externals/issues/33)). Might force users who relied on this, to make sure this plugin comes first in the plugins array.
 
 ### Breaking changes in previous versions
 <details><summary>Previous versions -- click to expand</summary>
