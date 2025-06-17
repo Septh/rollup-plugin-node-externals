@@ -2,13 +2,14 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "npm: lint",
 			"type": "npm",
 			"script": "lint",
-			"problemMatcher": "$eslint-stylish",
-			"label": "npm: lint",
-			"detail": "eslint src/index.ts"
+			"detail": "eslint src/index.ts",
+			"problemMatcher": "$eslint-stylish"
 		},
 		{
+			"label": "tsc: watch - tsconfig.build.json",
 			"type": "typescript",
 			"tsconfig": "tsconfig.build.json",
 			"option": "watch",
@@ -19,7 +20,9 @@
 				"kind": "build",
 				"isDefault": true
 			},
-			"label": "tsc: watch - tsconfig.build.json"
+			"runOptions": {
+				"runOn": "folderOpen"
+			}
 		}
 	]
 }
