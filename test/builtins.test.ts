@@ -19,7 +19,7 @@ test("Does NOT mark Node builtins external when builtins=false", async t => {
     }
 })
 
-test("Does NOT mark Node builtins external when implicitely excluded", async t => {
+test("Does NOT mark Node builtins external when implicitly excluded", async t => {
     const context = await initPlugin({ exclude: [ 'path', 'node:fs' ]})
     for (const builtin of [ 'path', 'node:fs' ]) {
         t.like(await context.resolveId(builtin, 'index.js'), {
@@ -55,7 +55,7 @@ test("Removes 'node:' prefix when using builtinsPrefix='strip'", async t => {
     }
 })
 
-test("Does NOT remove 'node:test' prefix even with builtinsPrefix='add'", async t => {
+test("Does NOT remove 'node:test' prefix even with builtinsPrefix='strip'", async t => {
     const context = await initPlugin({ builtinsPrefix: 'strip' })
     for (const builtin of [ 'node:test' ]) {
         t.like(await context.resolveId(builtin, 'index.js'), {

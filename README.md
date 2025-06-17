@@ -124,7 +124,7 @@ Set the `builtins` option to `false` if you'd like to use some shims/polyfills f
 #### builtinsPrefix?: 'add' | 'strip' | 'ignore' = 'add'
 How to handle the `node:` scheme used in recent versions of Node (i.e., `import path from 'node:path'`).
 - If `add` (the default, recommended), the `node:` scheme is always added if missing. In effect, this dedupes your imports of Node builtins by homogenizing their names to their schemed version.
-- If `strip`, the scheme is always removed. In effect, this dedupes your imports of Node builtins by homogenizing their names to their unschemed version. Schemed-only builtins like `node:test` are never stripped.
+- If `strip`, the scheme is always removed. In effect, this dedupes your imports of Node builtins by homogenizing their names to their scheme-less version. Schemed-only builtins like `node:test` are never stripped.
 - `ignore` will simply leave all builtins imports as written in your code.
 > _Note that scheme handling is always applied, regardless of the `builtins` options being enabled or not._
 
@@ -252,7 +252,7 @@ export default defineConfig({
 - This plugin now has a **peer-dependency** on Rollup `^3.0.0 || ^4.0.0`.<br />*If you need Rollup 2 support, please stick to v5.*
 
 #### Breaking changes in version 5
-- In previous versions, the `devDeps` option defaulted to `true`.<br>This was practical, but often wrong: devDependencies are meant just for that: being used when developping. Therefore, the `devDeps` option now defaults to `false`, meaning Rollup will include them in your bundle.
+- In previous versions, the `devDeps` option defaulted to `true`.<br>This was practical, but often wrong: devDependencies are meant just for that: being used when developing. Therefore, the `devDeps` option now defaults to `false`, meaning Rollup will include them in your bundle.
 - As anticipated since v4, the `builtinsPrefix` option now defaults to `'add'`.
 - The deprecated `prefixedBuiltins` option has been removed. Use `builtinsPrefix` instead.
 - `rollup-plugin-node-externals` no longer depends on the Find-Up package (while this is not a breaking change per se, it can be in some edge situations).

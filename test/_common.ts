@@ -25,7 +25,7 @@ class MockPluginContext {
             buildStart = buildStart.handler
         if (typeof buildStart === 'function')
             return await buildStart.call(this as any, {} as NormalizedInputOptions)
-        throw new Error('Ooops')
+        throw new Error('Oops')
     }
 
     async resolveId(specifier: string, importer: string | undefined) {
@@ -34,7 +34,7 @@ class MockPluginContext {
             resolveId = resolveId.handler
         if (typeof resolveId === 'function')
             return await resolveId.call(this as any, specifier, importer, { attributes: {}, isEntry: typeof importer === 'string' ? false : true })
-        throw new Error('Ooops')
+        throw new Error('Oops')
     }
 
     error(err: string | RollupError): never {
