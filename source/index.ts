@@ -7,7 +7,8 @@ type MaybeFalsy<T> = (T) | undefined | null | false
 type MaybeArray<T> = (T) | (T)[]
 
 interface ViteCompatiblePlugin extends Plugin {
-    enforce: 'pre' | 'post'
+    apply?: 'build' | 'serve'
+    enforce?: 'pre' | 'post'
 }
 
 export interface ExternalsOptions {
@@ -138,6 +139,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
     return {
         name: name.replace(/^rollup-plugin-/, ''),
         version,
+        apply: 'build',
         enforce: 'pre',
 
         async buildStart() {
