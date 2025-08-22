@@ -54,7 +54,7 @@ class MockPluginContext {
 }
 
 export async function initPlugin(options: ExternalsOptions = {}) {
-    const plugin = nodeExternals(options)
+    const plugin = await nodeExternals(options)
     const context = new MockPluginContext(plugin)
     await context.buildStart()
     return context

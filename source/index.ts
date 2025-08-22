@@ -1,5 +1,6 @@
 import path from 'node:path'
 import fs from 'node:fs/promises'
+import cp from 'node:child_process'
 import { createRequire, isBuiltin } from 'node:module'
 import type { Plugin } from 'rollup'
 
@@ -98,7 +99,7 @@ const { name, version } = createRequire(import.meta.url)('#package.json') as Pac
 // Files that mark the root of a monorepo
 const workspaceRootFiles = [
     'pnpm-workspace.yaml',  // pnpm
-    'lerna.json',           // Lerna
+    'lerna.json',           // Lerna / Lerna Light
     // Note: is there any interest in the following?
     // 'workspace.jsonc',      // Bit
     // 'nx.json',              // Nx
@@ -126,7 +127,7 @@ const isString = (str: unknown): str is string =>
  * A Rollup/Vite plugin that automatically declares NodeJS built-in modules,
  * and optionally npm dependencies, as 'external'.
  */
-function nodeExternals(options: ExternalsOptions = {}): Plugin {
+async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
 
     const config: Config = { ...defaults, ...options }
 
@@ -135,6 +136,13 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
 
     const isIncluded = (id: string) => include.length > 0 && include.some(rx => rx.test(id)),
           isExcluded = (id: string) => exclude.length > 0 && exclude.some(rx => rx.test(id))
+
+    // Determine the root of the git repository, if any.
+    const gitRepository = await new Promise<string | null>(resolve => {
+        cp.execFile('git', [ 'rev-parse', '--show-toplevel' ], (error, stdout) => {
+            return resolve(error ? null : path.normalize(stdout.trim()))
+        })
+    })
 
     return {
         name: name.replace(/^rollup-plugin-/, ''),
@@ -165,12 +173,11 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                 .concat(config.packagePath)
                 .filter(isString)
                 .map(packagePath => path.resolve(packagePath))
+
             if (packagePaths.length === 0) {
-                search: for (
-                    let current = process.cwd(), previous: string | undefined = undefined;
-                    previous !== current;
-                    previous = current, current = path.dirname(current)
-                ) {
+                search:
+                for (let current = process.cwd(), previous: string | undefined = undefined; previous !== current; previous = current, current = path.dirname(current)) {
+
                     // Gather package.json files.
                     let name = path.join(current, 'package.json')
                     let stat = await fs.stat(name).catch(() => null)
@@ -178,16 +185,12 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                         packagePaths.push(name)
 
                     // Break early if we are at the root of a git repo.
-                    name = path.join(current, '.git')
-                    stat = await fs.stat(name).catch(() => null)
-                    if (stat?.isDirectory())
+                    if (current === gitRepository)
                         break
 
                     // Break early is there is a known workspace root file.
                     for (const file of workspaceRootFiles) {
-                        name = path.join(current, file)
-                        stat = await fs.stat(name).catch(() => null)
-                        if (stat?.isFile())
+                        if (await fs.stat(path.join(current, file)).then(stat => stat.isFile()).catch(() => false))
                             break search
                     }
                 }
