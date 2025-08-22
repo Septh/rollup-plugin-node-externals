@@ -179,9 +179,8 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
                 for (let current = process.cwd(), previous: string | undefined = undefined; previous !== current; previous = current, current = path.dirname(current)) {
 
                     // Gather package.json files.
-                    const name = path.join(current, 'package.json')
-                    const stat = await fs.stat(name).catch(() => null)
-                    if (stat?.isFile())
+                    let name = path.join(current, 'package.json')
+                    if (await fs.stat(name).then(stat => stat.isFile()).catch(() => false))
                         packagePaths.push(name)
 
                     // Break early if we are at the root of a git repo.
@@ -189,8 +188,8 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
                         break
 
                     // Break early is there is a known workspace root file.
-                    for (const file of workspaceRootFiles) {
-                        if (await fs.stat(path.join(current, file)).then(stat => stat.isFile()).catch(() => false))
+                    for (name of workspaceRootFiles) {
+                        if (await fs.stat(path.join(current, name)).then(stat => stat.isFile()).catch(() => false))
                             break search
                     }
                 }
