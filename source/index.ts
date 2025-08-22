@@ -176,7 +176,7 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
 
             if (packagePaths.length === 0) {
                 search:
-                for (let current = process.cwd(), previous: string | undefined = undefined; previous !== current; previous = current, current = path.dirname(current)) {
+                for (let current = process.cwd(), previous = ''; previous !== current; previous = current, current = path.dirname(current)) {
 
                     // Gather package.json files.
                     let name = path.join(current, 'package.json')
