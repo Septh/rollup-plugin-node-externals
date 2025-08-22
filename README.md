@@ -9,9 +9,9 @@
 </p>
 
 # rollup-plugin-node-externals
-A Rollup/Vite plugin that automatically declares NodeJS built-in modules as `external`. Also handles npm dependencies, devDependencies, peerDependencies and optionalDependencies.
+A Rollup/Vite plugin that automatically declares NodeJS built-in modules as `external`. Also handles dependencies, devDependencies, peerDependencies and optionalDependencies.
 
-Works in pnpm/yarn/lerna monorepos too!
+Works in monorepos too!
 
 
 ## Why you need this
@@ -34,7 +34,7 @@ As an added bonus, this plugin will also declare your dependencies (as per your 
 
 
 ## Installation
-Use your favorite package manager. Mine is [npm](https://www.npmjs.com).
+Use your favorite package manager. Mine is [npm](https://www.npmjs.com):
 
 ```sh
 npm install --save-dev rollup-plugin-node-externals
@@ -122,7 +122,7 @@ export default {
 Set the `builtins` option to `false` if you'd like to use some shims/polyfills for those. You'll most certainly need [an other plugin](https://github.com/ionic-team/rollup-plugin-node-polyfills) as well.
 
 #### builtinsPrefix?: 'add' | 'strip' | 'ignore' = 'add'
-How to handle the `node:` scheme used in recent versions of Node (i.e., `import path from 'node:path'`).
+How to handle the `node:` scheme when importing builtins (i.e., `import path from 'node:path'`).
 - If `add` (the default, recommended), the `node:` scheme is always added if missing. In effect, this dedupes your imports of Node builtins by homogenizing their names to their schemed version.
 - If `strip`, the scheme is always removed. In effect, this dedupes your imports of Node builtins by homogenizing their names to their scheme-less version. Schemed-only builtins like `node:test` are never stripped.
 - `ignore` will simply leave all builtins imports as written in your code.
