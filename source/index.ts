@@ -179,8 +179,8 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
                 for (let current = process.cwd(), previous: string | undefined = undefined; previous !== current; previous = current, current = path.dirname(current)) {
 
                     // Gather package.json files.
-                    let name = path.join(current, 'package.json')
-                    let stat = await fs.stat(name).catch(() => null)
+                    const name = path.join(current, 'package.json')
+                    const stat = await fs.stat(name).catch(() => null)
                     if (stat?.isFile())
                         packagePaths.push(name)
 
