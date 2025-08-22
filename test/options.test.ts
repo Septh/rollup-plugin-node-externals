@@ -18,7 +18,7 @@ const externalsOptionsArbitrary = (): Arbitrary<ExternalsOptions> => fc.record({
     optDeps: fc.boolean(),
     include: fc.oneof(fc.string(), fc.array(fc.string())),
     exclude: fc.oneof(fc.string(), fc.array(fc.string())),
-}, { withDeletedKeys: true })
+}, { requiredKeys: [] })
 
 testProp(
     'Does not throw on constructing plugin object for valid input',
