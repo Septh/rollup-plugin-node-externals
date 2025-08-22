@@ -100,10 +100,10 @@ const { name, version } = createRequire(import.meta.url)('#package.json') as Pac
 const workspaceRootFiles = [
     'pnpm-workspace.yaml',  // pnpm
     'lerna.json',           // Lerna / Lerna Light
+    'rush.json',            // Rush
     // Note: is there any interest in the following?
     // 'workspace.jsonc',      // Bit
     // 'nx.json',              // Nx
-    // 'rush.json',            // Rush
 ]
 
 // Our defaults.
