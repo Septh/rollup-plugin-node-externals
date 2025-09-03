@@ -127,7 +127,7 @@ const isString = (str: unknown): str is string =>
  * A Rollup/Vite plugin that automatically declares NodeJS built-in modules,
  * and optionally npm dependencies, as 'external'.
  */
-async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
+function nodeExternals(options: ExternalsOptions = {}): Plugin {
 
     const config: Config = { ...defaults, ...options }
 
@@ -138,7 +138,12 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
           isExcluded = (id: string) => exclude.length > 0 && exclude.some(rx => rx.test(id))
 
     // Determine the root of the git repository, if any.
-    const gitRepository = await new Promise<string | null>(resolve => {
+    //
+    // Note: it looks like Vite doesn't support async plugin factories
+    //       (see https://github.com/Septh/rollup-plugin-node-externals/issues/37
+    //       and https://github.com/vitejs/vite/issues/20717), so we don't await
+    //       the result here but rather inside the buildStart hook.
+    const gitTopLevel = new Promise<string | null>(resolve => {
         cp.execFile('git', [ 'rev-parse', '--show-toplevel' ], (error, stdout) => {
             return resolve(error ? null : path.normalize(stdout.trim()))
         })
@@ -184,7 +189,7 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
                         packagePaths.push(name)
 
                     // Break early if we are at the root of a git repo.
-                    if (current === gitRepository)
+                    if (current === await gitTopLevel)
                         break
 
                     // Break early is there is a known workspace root file.
