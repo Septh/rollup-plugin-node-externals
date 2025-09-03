@@ -1,6 +1,6 @@
 {
   "name": "rollup-plugin-node-externals",
-  "version": "8.1.0",
+  "version": "8.1.1",
   "description": "Automatically declare NodeJS built-in modules and npm dependencies as 'external' in Rollup/Vite config",
   "author": "Stephan Schreiber <septh@sfr.fr>",
   "contributors": [
