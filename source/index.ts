@@ -120,8 +120,9 @@ const defaults: Config = {
     exclude: []
 }
 
-const isString = (str: unknown): str is string =>
-    typeof str === 'string' && str.length > 0
+// Helpers.
+const isString = (str: unknown): str is string => typeof str === 'string' && str.length > 0
+const fileExists = (name: string) => fs.stat(name).then(stat => stat.isFile()).catch(() => false)
 
 /**
  * A Rollup/Vite plugin that automatically declares NodeJS built-in modules,
@@ -131,21 +132,20 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
 
     const config: Config = { ...defaults, ...options }
 
-    let include: RegExp[] = [],     // Initialized to empty arrays as a workaround
-        exclude: RegExp[] = []      // to https://github.com/Septh/rollup-plugin-node-externals/issues/30
+    let include: RegExp[] = [],     // Initialized to empty arrays
+        exclude: RegExp[] = []      // as a workaround to issue #30
 
     const isIncluded = (id: string) => include.length > 0 && include.some(rx => rx.test(id)),
           isExcluded = (id: string) => exclude.length > 0 && exclude.some(rx => rx.test(id))
 
     // Determine the root of the git repository, if any.
     //
-    // Note: it looks like Vite doesn't support async plugin factories
-    //       (see https://github.com/Septh/rollup-plugin-node-externals/issues/37
-    //       and https://github.com/vitejs/vite/issues/20717), so we don't await
-    //       the result here but rather inside the buildStart hook.
-    const gitTopLevel = new Promise<string | null>(resolve => {
+    // Note: we can't await the promise here because this would require our factory function
+    //       to be async and that would break the old Vite compatibility trick
+    //       (see issue #37 and https://github.com/vitejs/vite/issues/20717).
+    const gitTopLevel = new Promise<string>(resolve => {
         cp.execFile('git', [ 'rev-parse', '--show-toplevel' ], (error, stdout) => {
-            return resolve(error ? null : path.normalize(stdout.trim()))
+            resolve(error ? '' : path.normalize(stdout.trim()))
         })
     })
 
@@ -178,65 +178,56 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                 .concat(config.packagePath)
                 .filter(isString)
                 .map(packagePath => path.resolve(packagePath))
-
             if (packagePaths.length === 0) {
-                search:
                 for (let current = process.cwd(), previous = ''; previous !== current; previous = current, current = path.dirname(current)) {
 
                     // Gather package.json files.
-                    let name = path.join(current, 'package.json')
-                    if (await fs.stat(name).then(stat => stat.isFile()).catch(() => false))
+                    const name = path.join(current, 'package.json')
+                    if (await fileExists(name))
                         packagePaths.push(name)
 
-                    // Break early if we are at the root of a git repo.
-                    if (current === await gitTopLevel)
-                        break
+                    // Break early if we are at the root of the git repo
+                    // or there is a known workspace root file.
+                    const breaks = await Promise.all([
+                        gitTopLevel.then(topLevel => topLevel === current),
+                        ...workspaceRootFiles.map(name => fileExists(path.join(current, name)))
+                    ])
 
-                    // Break early is there is a known workspace root file.
-                    for (name of workspaceRootFiles) {
-                        if (await fs.stat(path.join(current, name)).then(stat => stat.isFile()).catch(() => false))
-                            break search
-                    }
+                    if (breaks.some(result => result))
+                        break
                 }
             }
 
             // Gather dependencies names.
-            const dependencies: Record<string, string> = {}
+            const externals: Record<string, string> = {}
             for (const packagePath of packagePaths) {
-                const buffer = await fs.readFile(packagePath).catch((err: NodeJS.ErrnoException) => err)
-                if (buffer instanceof Error) {
-                    return this.error({
-                        message: `Cannot read file ${packagePath}, error: ${buffer.code}.`,
-                        stack: undefined
-                    })
+                const manifest = await fs.readFile(packagePath)
+                    .then(buffer => JSON.parse(buffer.toString()) as PackageJson)
+                    .catch((err: NodeJS.ErrnoException | SyntaxError) => err)
+                if (manifest instanceof Error) {
+                    const message = manifest instanceof SyntaxError
+                        ? `File ${JSON.stringify(packagePath)} does not look like a valid package.json.`
+                        : `Cannot read ${JSON.stringify(packagePath)}, error: ${manifest.code}.`
+                    return this.error({ message, stack: undefined })
                 }
 
-                try {
-                    const pkg = JSON.parse(buffer.toString()) as PackageJson
-                    Object.assign(dependencies,
-                        config.deps     ? pkg.dependencies         : undefined,
-                        config.devDeps  ? pkg.devDependencies      : undefined,
-                        config.peerDeps ? pkg.peerDependencies     : undefined,
-                        config.optDeps  ? pkg.optionalDependencies : undefined
-                    )
+                Object.assign(externals,
+                    config.deps     ? manifest.dependencies         : undefined,
+                    config.devDeps  ? manifest.devDependencies      : undefined,
+                    config.peerDeps ? manifest.peerDependencies     : undefined,
+                    config.optDeps  ? manifest.optionalDependencies : undefined
+                )
 
-                    // Watch this package.json
-                    this.addWatchFile(packagePath)
+                // Watch this package.json.
+                this.addWatchFile(packagePath)
 
-                    // Break early if this is an npm/yarn workspace root.
-                    if (Array.isArray(pkg.workspaces))
-                        break
-                }
-                catch {
-                    this.error({
-                        message: `File ${JSON.stringify(packagePath)} does not look like a valid package.json file.`,
-                        stack: undefined
-                    })
-                }
+                // Break early if this is an npm/yarn workspace root.
+                if (Array.isArray(manifest.workspaces))
+                    break
             }
 
             // Add all dependencies as an include RegEx.
-            const names = Object.keys(dependencies)
+            const names = Object.keys(externals)
             if (names.length > 0)
                 include.push(new RegExp('^(?:' + names.join('|') + ')(?:/.+)?$'))
         },

@@ -28,9 +28,9 @@ testProp(
             await initPlugin(options)
             t.pass()
         }
-        catch(err) {
+        catch (err) {
             const { message } = err as Error
-            message.startsWith('Cannot read file') ? t.pass() : t.fail(message)
+            message.startsWith('Cannot read') ? t.pass() : t.fail(message)
         }
     }
 )
