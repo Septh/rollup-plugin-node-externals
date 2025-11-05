@@ -1,39 +1,42 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Plugin, RollupError, PluginContextMeta, NormalizedInputOptions } from 'rollup'
+import {
+    VERSION,
+    type Plugin, type RollupError, type PluginContextMeta, type NormalizedInputOptions
+} from 'rollup'
 import { nodeExternals, type ExternalsOptions } from '../source/index.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 class MockPluginContext {
-    private readonly externals: Plugin
+    private readonly plugin: Plugin
     readonly warnings: string[]
     readonly meta: PluginContextMeta
 
-    constructor(externals: Plugin) {
-        this.externals = externals
+    constructor(plugin: Plugin) {
+        this.plugin = plugin
         this.warnings = []
         this.meta = {
-            rollupVersion: '4.9.6',
+            rollupVersion: VERSION,
             watchMode: false
         }
     }
 
     async buildStart() {
-        let { buildStart } = this.externals
-        if (typeof buildStart === 'object')
-            buildStart = buildStart.handler
-        if (typeof buildStart === 'function')
-            return await buildStart.call(this as any, {} as NormalizedInputOptions)
+        let { buildStart: hook } = this.plugin
+        if (typeof hook === 'object')
+            hook = hook.handler
+        if (typeof hook === 'function')
+            return await hook.call(this as any, {} as NormalizedInputOptions)
         throw new Error('Oops')
     }
 
-    async resolveId(specifier: string, importer: string | undefined) {
-        let { resolveId } = this.externals
-        if (typeof resolveId === 'object')
-            resolveId = resolveId.handler
-        if (typeof resolveId === 'function')
-            return await resolveId.call(this as any, specifier, importer, { attributes: {}, isEntry: typeof importer === 'string' ? false : true })
+    async resolveId(specifier: string, importer?: string | undefined) {
+        let { resolveId: hook } = this.plugin
+        if (typeof hook === 'object')
+            hook = hook.handler
+        if (typeof hook === 'function')
+            return await hook.call(this as any, specifier, importer, { attributes: {}, isEntry: typeof importer === 'string' ? false : true })
         throw new Error('Oops')
     }
 

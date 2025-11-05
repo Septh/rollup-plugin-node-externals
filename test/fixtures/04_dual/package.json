@@ -1,8 +1,9 @@
 {
-  "devDependencies": {
+  "//": "Purposely marked both as a normal and a dev dependency",
+  "dependencies": {
     "dual-dep": "*"
   },
-  "peerDependencies": {
+  "devDependencies": {
     "dual-dep": "*"
   }
 }
