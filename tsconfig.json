@@ -24,7 +24,6 @@
     "skipLibCheck": false,
     "skipDefaultLibCheck": true,
     "exactOptionalPropertyTypes": true,
-    "noUncheckedIndexedAccess": true,
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "noImplicitOverride": true,
