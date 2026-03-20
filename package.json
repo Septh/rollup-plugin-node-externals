@@ -62,7 +62,9 @@
     "build": "npm run build:js && npm run build:dts",
     "build:js": "tsc -p tsconfig.build.json --removeComments",
     "build:dts": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly",
-    "test": "ava",
+    "pretest": "npm run build",
+    "test": "npm run testOnly",
+    "testOnly": "ava",
     "lint": "eslint source/index.ts",
     "prepublishOnly": "npm run lint && npm run build"
   },

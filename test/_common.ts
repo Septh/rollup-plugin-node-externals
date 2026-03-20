@@ -1,12 +1,9 @@
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import {
-    VERSION,
-    type Plugin, type RollupError, type PluginContextMeta, type NormalizedInputOptions
+    VERSION as rollupVersion,
+    type Plugin, type RollupError, type PluginContextMeta, type NormalizedInputOptions, type ResolveIdHook
 } from 'rollup'
 import { nodeExternals, type ExternalsOptions } from '../source/index.ts'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 class MockPluginContext {
     private readonly plugin: Plugin
@@ -17,7 +14,7 @@ class MockPluginContext {
         this.plugin = plugin
         this.warnings = []
         this.meta = {
-            rollupVersion: VERSION,
+            rollupVersion,
             watchMode: false
         }
     }
@@ -36,7 +33,7 @@ class MockPluginContext {
         if (typeof hook === 'object')
             hook = hook.handler
         if (typeof hook === 'function')
-            return await hook.call(this as any, specifier, importer, { attributes: {}, isEntry: typeof importer === 'string' ? false : true })
+            return await hook.call(this as any, specifier, importer, { isEntry: importer === undefined, attributes: {} })
         throw new Error('Oops')
     }
 
@@ -64,5 +61,5 @@ export async function initPlugin(options: ExternalsOptions = {}) {
 }
 
 export function fixture(...parts: string[]) {
-    return path.join(__dirname, 'fixtures', ...parts)
+    return path.join(import.meta.dirname, 'fixtures', ...parts)
 }
