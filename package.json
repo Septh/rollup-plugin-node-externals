@@ -5,7 +5,9 @@
   "author": "Stephan Schreiber <septh@sfr.fr>",
   "contributors": [
     "Tomer Aberbach <tomeraberbach@gmail.com>",
-    "Elad Ossadon <eossadon@lyft.com>"
+    "Elad Ossadon <eossadon@lyft.com>",
+    "Segev Finer <segev208@gmail.com>",
+    "Jefferson Rylee <rylee.jeff385@gmail.com>"
   ],
   "keywords": [
     "rollup",
@@ -43,11 +45,11 @@
   "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">= 21 || ^20.6.0 || ^18.19.0"
+    "node": ">= 22"
   },
   "files": [
     "dist",
-    "!dist/**/*.map"
+    "!*.map"
   ],
   "types": "./dist/index.d.ts",
   "exports": "./dist/index.js",
@@ -55,13 +57,14 @@
     "#package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "build:dts": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly --removeComments false",
-    "watch": "tsc -p tsconfig.build.json -w",
+    "clean": "node -e \"require('node:fs').rmSync('./dist', { recursive: true, force: true, maxRetries: process.platform === 'win32' ? 10 : 0 })\"",
+    "prebuild": "npm run clean",
+    "build": "npm run build:js && npm run build:dts",
+    "build:js": "tsc -p tsconfig.build.json --removeComments",
+    "build:dts": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly",
     "test": "ava",
     "lint": "eslint source/index.ts",
-    "clean": "tsc -b tsconfig.build.json --declaration --clean",
-    "prepublishOnly": "npm run lint && npm run clean && npm run build && npm run build:dts"
+    "prepublishOnly": "npm run lint && npm run build"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -79,7 +82,12 @@
     "typescript": "^5.7.2"
   },
   "peerDependencies": {
-    "rollup": "^4.0.0"
+    "rollup": "^4.0.0",
+    "vite": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "rollup": { "optional": true },
+    "vite": { "optional": true }
   },
   "ava": {
     "workerThreads": false,
