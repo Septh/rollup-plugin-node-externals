@@ -1,35 +1,33 @@
 {
-    "include": [
-        "source",
-        "eslint.config.mjs"
-    ],
-    "compilerOptions": {
+  "include": [
+    "source",
+    "eslint.config.mjs"
+  ],
+  "compilerOptions": {
 
-        // Node stuff
-        "module": "Node16",
-        "allowSyntheticDefaultImports": true,
+    // Environment
+    "module": "node20",
+    "target": "ESNext",
+    "lib": [ "ESNext" ],
+    "types": [ "node" ],
 
-        // Input
-        "resolveJsonModule": true,
-        "checkJs": true,
+    // Input
+    "resolveJsonModule": true,
+    "checkJs": true,
 
-        // Output
-        "target": "ESNext",
-        "sourceMap": true,
-        "removeComments": true,
-        "noEmit": true,
+    // Output
+    "sourceMap": true,
+    "noEmit": true,
 
-        // Lib
-        "lib": [ "ESNext" ],
-        "skipLibCheck": true,
-        "skipDefaultLibCheck": true,
-
-        // Type checking
-        "strict": true,
-        "noImplicitReturns": true,
-        "noUnusedLocals": false,
-        "noUnusedParameters": false,
-        "noPropertyAccessFromIndexSignature": true,
-        "noUncheckedIndexedAccess": false,
-    }
+    // Type checking
+    "strict": true,
+    "skipLibCheck": false,
+    "skipDefaultLibCheck": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noUncheckedSideEffectImports": true,
+  }
 }

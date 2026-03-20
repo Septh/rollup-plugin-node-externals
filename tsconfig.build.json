@@ -1,11 +1,13 @@
 {
-    "extends": "./tsconfig.json",
-    "include": [
-        "source"
-    ],
-    "compilerOptions": {
-        "rootDir": "source",
-        "outDir": "dist",
-        "noEmit": false,
-    }
+  "extends": "./tsconfig.json",
+  "include": [
+    "source"
+  ],
+  "compilerOptions": {
+    "rootDir": "source",
+    "outDir": "dist",
+    "allowJs": false,
+    "checkJs": false,
+    "noEmit": false,
+  }
 }
