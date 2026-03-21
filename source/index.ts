@@ -156,17 +156,17 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
         .map(packagePath => path.resolve(packagePath))
     if (packagePaths.length === 0) {
 
-        // Determine the root of the git repository, if any.
-        // - If git is not available, resolves with `null`. In this case, we'll fallback to the old method
-        //   of checking for a `.git` directory on each step of the 'find-up' process.
-        // - If not inside a repository, resolves with an empty string ('').
+        // Ask git the root of the repository, if any.
+        // - If git is not available, resolves with `null`.
+        // - If git says we're not inside a repo, resolves with an empty string ('').
         // - Otherwise, resolves with the path to the root of the repository.
         const gitTopLevel = await new Promise<string | null>(resolve => {
             cp.execFile('git', [ 'rev-parse', '--show-toplevel' ], (error, stdout) => {
                 if (error) {
                     // - If `execFile()` failed to execute git, `error` is a `NodeJS.ErrnoException`
                     //   and `error.code` is a string, eg. 'ENOENT' or 'EPERM'.
-                    // - If git ran but exited with non-zero, we simply assume we are not inside a git repository.
+                    // - Otherwise, git ran but exited with non-zero so we simply assume this is because
+                    //   we are not inside a repo.
                     resolve(typeof error.code === 'string' ? null : '')
                 }
                 else resolve(path.normalize(stdout.trim()))
@@ -179,12 +179,17 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
                 packagePaths.push(name)
 
             // Break early if we are at the root of the git repo.
-            if (cwd === gitTopLevel || (gitTopLevel === null && await directoryExists(path.join(cwd, '.git'))))
+            if (cwd === gitTopLevel)
                 break
 
-            // Break early if there is a known monorepo root file.
-            const breaks = await Promise.all(monorepoRootFiles.map(name => fileExists(path.join(cwd, name))))
-            if (breaks.some(Boolean))
+            // If execFile() failed to run git, this doesn't necessarily mean that we're not in a repo
+            // so fallback to the old method of checking for a `.git` directory on each step of the 'find-up' process.
+            if (gitTopLevel === null && await directoryExists(path.join(cwd, '.git')))
+                break
+
+            // Otherwise, check if there is a known monorepo root file.
+            const checks = await Promise.all(monorepoRootFiles.map(file => fileExists(path.join(cwd, file))))
+            if (checks.some(Boolean))
                 break
         }
     }
@@ -193,26 +198,26 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
     if (packagePaths.length > 0) {
         const externalDependencies: Record<string, string> = {}
 
-        for (const packagePath of packagePaths) {
-            const packageJson = await fs.readFile(packagePath)
-                .then(buffer => JSON.parse(buffer.toString()) as PackageJson)
+        for (const pkg of packagePaths) {
+            const json = await fs.readFile(pkg, 'utf-8')
+                .then(text => JSON.parse(text) as PackageJson)
                 .catch((err: NodeJS.ErrnoException | SyntaxError) => err)
-            if (packageJson instanceof Error) {
-                const message = packageJson instanceof SyntaxError
-                    ? `File ${JSON.stringify(packagePath)} does not look like a valid package.json.`
-                    : `Cannot read ${JSON.stringify(packagePath)}, error: ${packageJson.code}.`
-                throw new Error(message, { cause: packageJson })
+            if (json instanceof Error) {
+                const message = json instanceof SyntaxError
+                    ? `File ${JSON.stringify(pkg)} does not look like a valid package.json.`
+                    : `Cannot read ${JSON.stringify(pkg)}, error: ${json.code}.`
+                throw new Error(message, { cause: json })
             }
 
             Object.assign(externalDependencies,
-                config.deps     ? packageJson.dependencies         : undefined,
-                config.devDeps  ? packageJson.devDependencies      : undefined,
-                config.peerDeps ? packageJson.peerDependencies     : undefined,
-                config.optDeps  ? packageJson.optionalDependencies : undefined
+                config.deps     ? json.dependencies         : undefined,
+                config.devDeps  ? json.devDependencies      : undefined,
+                config.peerDeps ? json.peerDependencies     : undefined,
+                config.optDeps  ? json.optionalDependencies : undefined
             )
 
             // Break early if this is an npm/yarn workspace root.
-            if (Array.isArray(packageJson.workspaces))
+            if (Array.isArray(json.workspaces))
                 break
         }
 
@@ -234,17 +239,16 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
         buildStart() {
 
             // Display initial warnings, if any, but only once.
-            let warning: string | undefined
-            while ((warning = configWarnings.shift()))
+            for (let warning = configWarnings.shift(); warning; warning = configWarnings.shift())
                 this.warn(warning)
 
-            // Watch all packages.json
+            // Watch all package.json
             packagePaths.forEach(packagePath => this.addWatchFile(packagePath))
         },
 
-        resolveId(specifier, importer, { isEntry }) {
+        resolveId(specifier, _, { isEntry }) {
             if (
-                !importer || isEntry                    // Ignore entry points
+                isEntry                                 // Ignore entry points
                 || /^(?:\0|\.{1,2}\/)/.test(specifier)  // Ignore virtual modules and relative imports
                 || path.isAbsolute(specifier)           // Ignore already resolved ids
             ) {
