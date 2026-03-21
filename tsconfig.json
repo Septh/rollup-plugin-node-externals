@@ -1,7 +1,7 @@
 {
   "include": [
     "source",
-    "eslint.config.mjs"
+    "eslint.config.js"
   ],
   "compilerOptions": {
 
