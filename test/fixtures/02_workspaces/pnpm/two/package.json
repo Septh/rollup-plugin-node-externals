@@ -1,5 +1,14 @@
 {
   "dependencies": {
-    "react": "*"
+    "workspaces-pnpm-two-dep": "*"
+  },
+  "devDependencies": {
+    "workspaces-pnpm-two-devdep": "*"
+  },
+  "peerDependencies": {
+    "workspaces-pnpm-two-peerdep": "*"
+  },
+  "optionalDependencies": {
+    "workspaces-pnpm-two-optdep": "*"
   }
 }

@@ -1,5 +1,14 @@
 {
   "dependencies": {
-    "chalk": "*"
+    "workspaces-pnpm-dep": "*"
+  },
+  "devDependencies": {
+    "workspaces-pnpm-devdep": "*"
+  },
+  "peerDependencies": {
+    "workspaces-pnpm-peerdep": "*"
+  },
+  "optionalDependencies": {
+    "workspaces-pnpm-optdep": "*"
   }
 }

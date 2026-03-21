@@ -1,5 +1,14 @@
 {
   "dependencies": {
-    "moment": "*"
+    "workspaces-npm_yarn-one-dep": "*"
+  },
+  "devDependencies": {
+    "workspaces-npm_yarn-one-devdep": "*"
+  },
+  "peerDependencies": {
+    "workspaces-npm_yarn-one-peerdep": "*"
+  },
+  "optionalDependencies": {
+    "workspaces-npm_yarn-one-optdep": "*"
   }
 }

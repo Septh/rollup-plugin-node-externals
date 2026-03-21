@@ -1,5 +1,14 @@
 {
   "dependencies": {
-    "react": "*"
+    "workspaces-lerna-two-dep": "*"
+  },
+  "devDependencies": {
+    "workspaces-lerna-two-devdep": "*"
+  },
+  "peerDependencies": {
+    "workspaces-lerna-two-peerdep": "*"
+  },
+  "optionalDependencies": {
+    "workspaces-lerna-two-optdep": "*"
   }
 }

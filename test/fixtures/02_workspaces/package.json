@@ -1,5 +1,14 @@
 {
   "dependencies": {
-    "rollup": "*"
+    "workspaces-dep": "*"
+  },
+  "devDependencies": {
+    "workspaces-devdep": "*"
+  },
+  "peerDependencies": {
+    "workspaces-peerdep": "*"
+  },
+  "optionalDependencies": {
+    "workspaces-optdep": "*"
   }
 }

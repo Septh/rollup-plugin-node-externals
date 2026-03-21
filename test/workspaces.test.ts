@@ -1,68 +1,49 @@
 import test from 'ava'
-import { initPlugin, fixture } from './_common.ts'
+import { initPlugin, fixture, EXTERNAL, IGNORED } from './_common.ts'
 
-test('npm/yarn workspaces usage', async t => {
+// Tests in this file need to be serial so they do not interfere with each other
+
+test.serial('npm/yarn workspaces usage', async t => {
     process.chdir(fixture('02_workspaces/npm-and-yarn/one'))
     const context = await initPlugin()
 
     // Should be external
-    for (const dependency of [
-        'moment',       // 02_workspaces/npm-and-yarn/one/package.json
-        'chalk'         // 02_workspaces/npm-and-yarn/package.json
-    ]) {
-        t.false(await context.resolveId(dependency, 'index.js'))
+    for (const dependency of [ 'workspaces-npm_yarn-one-dep', 'workspaces-npm_yarn-dep' ]) {
+        t.is(await context.resolveId(dependency, 'index.js'), EXTERNAL)
     }
 
     // Should be ignored
-    for (const dependency of [
-        'react',        // 02_workspaces/npm-and-yarn/two/package.json
-        'rollup',       // 02_workspaces/package.json
-        'test-dep'      // ./package.json
-    ]) {
-        t.is(await context.resolveId(dependency, 'index.js'), null)
+    for (const dependency of [ 'workspaces-npm_yarn-two-dep', 'workspaces-dep', 'dep' ]) {
+        t.is(await context.resolveId(dependency, 'index.js'), IGNORED)
     }
 })
 
-test('pnpm workspaces usage', async t => {
+test.serial('pnpm workspaces usage', async t => {
     process.chdir(fixture('02_workspaces/pnpm/one'))
     const context = await initPlugin()
 
     // Should be external
-    for (const dependency of [
-        'moment',       // 02_workspaces/pnpm/one/package.json
-        'chalk'         // 02_workspaces/pnpm/package.json
-    ]) {
-        t.false(await context.resolveId(dependency, 'index.js'))
+    for (const dependency of [ 'workspaces-pnpm-one-dep', 'workspaces-pnpm-dep' ]) {
+        t.is(await context.resolveId(dependency, 'index.js'), EXTERNAL)
     }
 
     // Should be ignored
-    for (const dependency of [
-        'react',        // 02_workspaces/pnpm/two/package.json
-        'rollup',       // 02_workspaces/package.json
-        'test-dep'      // ./package.json
-    ]) {
-        t.is(await context.resolveId(dependency, 'index.js'), null)
+    for (const dependency of [ 'workspaces-pnpm-two-dep', 'workspaces-dep', 'dep' ]) {
+        t.is(await context.resolveId(dependency, 'index.js'), IGNORED)
     }
 })
 
-test('lerna usage', async t => {
+test.serial('lerna usage', async t => {
     process.chdir(fixture('02_workspaces/lerna/one'))
     const plugin = await initPlugin()
 
     // Should be external
-    for (const dependency of [
-        'moment',       // 02_workspaces/lerna/one/package.json
-        'chalk'         // 02_workspaces/lerna/package.json
-    ]) {
-        t.false(await plugin.resolveId(dependency, 'index.js'))
+    for (const dependency of [ 'workspaces-lerna-one-dep', 'workspaces-lerna-dep' ]) {
+        t.is(await plugin.resolveId(dependency, 'index.js'), EXTERNAL)
     }
 
     // Should be ignored
-    for (const dependency of [
-        'react',        // 02_workspaces/lerna/two/package.json
-        'rollup',       // 02_workspaces/package.json
-        'test-dep'      // ./package.json
-    ]) {
-        t.is(await plugin.resolveId(dependency, 'index.js'), null)
+    for (const dependency of [ 'workspaces-lerna-two-dep', 'workspaces-dep', 'dep' ]) {
+        t.is(await plugin.resolveId(dependency, 'index.js'), IGNORED)
     }
 })

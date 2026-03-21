@@ -1,5 +1,14 @@
 {
   "dependencies": {
-    "moment": "*"
+    "monorepo-one-dep": "*"
+  },
+  "devDependencies": {
+    "monorepo-one-devdep": "*"
+  },
+  "peerDependencies": {
+    "monorepo-one-peerdep": "*"
+  },
+  "optionalDependencies": {
+    "monorepo-one-optdep": "*"
   }
 }

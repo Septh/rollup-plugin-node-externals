@@ -1,5 +1,5 @@
 import test from 'ava'
-import { initPlugin } from './_common.ts'
+import { initPlugin, IGNORED } from './_common.ts'
 
 test("Marks Node builtins external by default", async t => {
     const context = await initPlugin()
@@ -66,7 +66,7 @@ test("Does NOT remove 'node:test' prefix even with builtinsPrefix='strip'", asyn
 
 test("Does not recognize 'test' as a Node builtin", async t => {
     const context = await initPlugin()
-    t.is(await context.resolveId('node', 'index.js'), null)
+    t.is(await context.resolveId('node', 'index.js'), IGNORED)
 })
 
 test("Ignores 'node:' prefix when using builtinsPrefix='ignore'", async t => {

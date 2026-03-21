@@ -1,9 +1,12 @@
 import path from 'node:path'
 import {
     VERSION as rollupVersion,
-    type Plugin, type RollupError, type PluginContextMeta, type NormalizedInputOptions, type ResolveIdHook
+    type Plugin, type RollupError, type PluginContextMeta, type NormalizedInputOptions
 } from 'rollup'
 import { nodeExternals, type ExternalsOptions } from '../source/index.ts'
+
+export const EXTERNAL = false
+export const IGNORED = null
 
 class MockPluginContext {
     private readonly plugin: Plugin

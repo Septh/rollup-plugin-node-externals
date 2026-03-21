@@ -1,6 +1,7 @@
 {
   "include": [
     "source",
+    "test",
     "eslint.config.js"
   ],
   "compilerOptions": {
@@ -16,6 +17,7 @@
     "checkJs": true,
 
     // Output
+    "rewriteRelativeImportExtensions": true,
     "sourceMap": true,
     "noEmit": true,
 

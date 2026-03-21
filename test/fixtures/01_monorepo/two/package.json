@@ -1,5 +1,15 @@
 {
   "dependencies": {
-    "react": "*"
+    "monorepo-two-dep": "*"
+  },
+  "devDependencies": {
+    "monorepo-two-devdep": "*"
+  },
+  "peerDependencies": {
+    "monorepo-two-peerdep": "*"
+  },
+  "optionalDependencies": {
+    "monorepo-two-optdep": "*"
   }
+
 }

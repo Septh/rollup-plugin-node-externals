@@ -1,7 +1,7 @@
 import test from 'ava'
 import { testProp, fc } from '@fast-check/ava'
 import type { Arbitrary } from 'fast-check'
-import { initPlugin, fixture } from './_common.ts'
+import { initPlugin, fixture, EXTERNAL } from './_common.ts'
 import { type ExternalsOptions } from '../source/index.ts'
 
 // Ensures tests use local package.json
@@ -53,7 +53,7 @@ test("Obeys 'packagePath' option (single file name)", async t => {
     const context = await initPlugin({
         packagePath: '00_simple/package.json'
     })
-    t.false(await context.resolveId('simple-dep', 'index.js'))
+    t.is(await context.resolveId('simple-dep', 'index.js'), EXTERNAL)
 })
 
 test("Obeys 'packagePath' option (multiple file names)", async t => {
@@ -65,10 +65,7 @@ test("Obeys 'packagePath' option (multiple file names)", async t => {
     })
 
     // Should be external
-    for (const dependency of [
-        'simple-dep',   // 00_simple/package.json
-        'chalk',        // 01_monorepo/package.json
-    ]) {
-        t.false(await context.resolveId(dependency, 'index.js'))
+    for (const dependency of [ 'simple-dep', 'monorepo-dep' ]) {
+        t.is(await context.resolveId(dependency, 'index.js'), EXTERNAL)
     }
 })

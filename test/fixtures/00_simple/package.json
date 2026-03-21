@@ -3,6 +3,12 @@
     "simple-dep": "*"
   },
   "devDependencies": {
-    "simple-dev-dep": "*"
+    "simple-devdep": "*"
+  },
+  "peerDependencies": {
+    "simple-peerdep": "*"
+  },
+  "optionalDependencies": {
+    "simple-optdep": "*"
   }
 }

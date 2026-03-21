@@ -1,5 +1,14 @@
 {
   "dependencies": {
-    "chalk": "*"
+    "monorepo-dep": "*"
+  },
+  "devDependencies": {
+    "monorepo-devdep": "*"
+  },
+  "peerDependencies": {
+    "monorepo-peerdep": "*"
+  },
+  "optionalDependencies": {
+    "monorepo-optdep": "*"
   }
 }

@@ -1,5 +1,14 @@
 {
   "dependencies": {
-    "react": "*"
+    "workspaces-npm_yarn-two-dep": "*"
+  },
+  "devDependencies": {
+    "workspaces-npm_yarn-two-devdep": "*"
+  },
+  "peerDependencies": {
+    "workspaces-npm_yarn-two-peerdep": "*"
+  },
+  "optionalDependencies": {
+    "workspaces-npm_yarn-two-optdep": "*"
   }
 }

@@ -1,6 +1,15 @@
 {
   "dependencies": {
-    "chalk": "*"
+    "workspaces-npm_yarn-dep": "*"
+  },
+  "devDependencies": {
+    "workspaces-npm_yarn-devdep": "*"
+  },
+  "peerDependencies": {
+    "workspaces-npm_yarn-peerdep": "*"
+  },
+  "optionalDependencies": {
+    "workspaces-npm_yarn-optdep": "*"
   },
   "workspaces": [
     "./one", "./two"

@@ -1,5 +1,14 @@
 {
   "dependencies": {
-    "moment": "*"
+    "workspaces-pnpm-one-dep": "*"
+  },
+  "devDependencies": {
+    "workspaces-pnpm-one-devdep": "*"
+  },
+  "peerDependencies": {
+    "workspaces-pnpm-one-peerdep": "*"
+  },
+  "optionalDependencies": {
+    "workspaces-pnpm-one-optdep": "*"
   }
 }
