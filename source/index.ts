@@ -9,27 +9,22 @@ import self from '#package.json' with { type: 'json' }
 type MaybeFalsy<T> = (T) | undefined | null | false
 type MaybeArray<T> = (T) | (T)[]
 
-interface ViteCompatiblePlugin extends Plugin {
-    apply?: 'build' | 'serve'
-    enforce?: 'pre' | 'post'
-}
-
 export interface ExternalsOptions {
 
     /**
-     * Mark node built-in modules like `path`, `fs`... as external.
+     * Mark NodeJS built-in modules like `node:path`, `node:fs`... as external.
      *
      * Defaults to `true`.
      */
     builtins?: boolean
 
     /**
-     * node: prefix handing for importing Node builtins:
+     * node: prefix handing for importing NodeJS builtins:
      * - `'add'`    turns `'path'` to `'node:path'`
      * - `'strip'`  turns `'node:path'` to `'path'`
-     * - `'ignore'` leaves Node builtin names as-is
+     * - `'ignore'` leaves NodeJS builtins names as-is
      *
-     * Defaults to `add`.
+     * Defaults to `'add'`.
      */
     builtinsPrefix?: 'add' | 'strip' | 'ignore'
 
@@ -37,7 +32,7 @@ export interface ExternalsOptions {
      * Path/to/your/package.json file (or array of paths).
      *
      * Defaults to all package.json files found in parent directories recursively.
-     * Won't go outside of a git repository.
+     * Won't go outside of a git repository or a monorepository.
      */
     packagePath?: string | string[]
 
@@ -93,6 +88,11 @@ interface PackageJson {
     devDependencies?: Record<string, string>
     peerDependencies?: Record<string, string>
     optionalDependencies?: Record<string, string>
+}
+
+interface ViteCompatiblePlugin extends Plugin {
+    apply?: 'build' | 'serve'
+    enforce?: 'pre' | 'post'
 }
 
 // Files that mark the root of a monorepo
@@ -153,7 +153,7 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
     const packagePaths = ([] as string[])
         .concat(config.packagePath)
         .filter(isString)
-        .map(packagePath => path.resolve(packagePath))
+        .map(pkg => path.resolve(pkg))
     if (packagePaths.length === 0) {
 
         // Ask git the root of the repository, if any.
@@ -165,7 +165,7 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
                 if (error) {
                     // - If `execFile()` failed to execute git, `error` is a `NodeJS.ErrnoException`
                     //   and `error.code` is a string, eg. 'ENOENT' or 'EPERM'.
-                    // - Otherwise, git ran but exited with non-zero so we simply assume this is because
+                    // - Otherwise, git ran but exited with non-zero and we simply assume this is because
                     //   we are not inside a repo.
                     resolve(typeof error.code === 'string' ? null : '')
                 }
@@ -183,7 +183,7 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
                 break
 
             // If execFile() failed to run git, this doesn't necessarily mean that we're not in a repo
-            // so fallback to the old method of checking for a `.git` directory on each step of the 'find-up' process.
+            // so fallback to the old method of checking for a `.git` directory.
             if (gitTopLevel === null && await directoryExists(path.join(cwd, '.git')))
                 break
 
@@ -239,11 +239,12 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
         buildStart() {
 
             // Display initial warnings, if any, but only once.
-            for (let warning = configWarnings.shift(); warning; warning = configWarnings.shift())
+            let warning: string | undefined
+            while (warning = configWarnings.shift())
                 this.warn(warning)
 
             // Watch all package.json
-            packagePaths.forEach(packagePath => this.addWatchFile(packagePath))
+            packagePaths.forEach(pkg => this.addWatchFile(pkg))
         },
 
         resolveId(specifier, _, { isEntry }) {
