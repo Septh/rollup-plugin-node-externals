@@ -128,7 +128,7 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
     for (const [ option, value ] of Object.entries(options)) {
         if (option in config) {
             if (value !== undefined && value !== null)
-                (config as any)[option] = value
+                (config as Record<string, unknown>)[option] = value
         }
         else configWarnings.push(`Ignoring unknown option '${JSON.stringify(option)}'`)
     }
@@ -235,7 +235,7 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
 
             // Display initial warnings, if any, but only once.
             let warning: string | undefined
-            while (warning = configWarnings.shift())
+            while ((warning = configWarnings.shift()))
                 this.warn(warning)
 
             // Watch all packages.json
