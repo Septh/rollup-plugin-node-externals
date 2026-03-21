@@ -72,7 +72,7 @@
     "@eslint/js": "^10.0.1",
     "@fast-check/ava": "^3.0.0",
     "@septh/ts-run": "^2.0.0",
-    "@types/node": "^22.19.15",
+    "@types/node": "^24.12.0",
     "ava": "^7.0.0",
     "eslint": "^10.1.0",
     "fast-check": "^4.2.0",
