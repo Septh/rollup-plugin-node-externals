@@ -1,15 +1,15 @@
 {
   "dependencies": {
-    "workspaces-npm_yarn-dep": "*"
+    "workspaces-npm+yarn-dep": "*"
   },
   "devDependencies": {
-    "workspaces-npm_yarn-devdep": "*"
+    "workspaces-npm+yarn-devdep": "*"
   },
   "peerDependencies": {
-    "workspaces-npm_yarn-peerdep": "*"
+    "workspaces-npm+yarn-peerdep": "*"
   },
   "optionalDependencies": {
-    "workspaces-npm_yarn-optdep": "*"
+    "workspaces-npm+yarn-optdep": "*"
   },
   "workspaces": [
     "./one", "./two"

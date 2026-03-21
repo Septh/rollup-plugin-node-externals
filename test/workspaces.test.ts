@@ -8,12 +8,12 @@ test.serial('npm/yarn workspaces usage', async t => {
     const context = await initPlugin()
 
     // Should be external
-    for (const dependency of [ 'workspaces-npm_yarn-one-dep', 'workspaces-npm_yarn-dep' ]) {
+    for (const dependency of [ 'workspaces-npm+yarn-one-dep', 'workspaces-npm+yarn-dep' ]) {
         t.is(await context.resolveId(dependency, 'index.js'), EXTERNAL)
     }
 
     // Should be ignored
-    for (const dependency of [ 'workspaces-npm_yarn-two-dep', 'workspaces-dep', 'dep' ]) {
+    for (const dependency of [ 'workspaces-npm+yarn-two-dep', 'workspaces-dep', 'dep' ]) {
         t.is(await context.resolveId(dependency, 'index.js'), IGNORED)
     }
 })
