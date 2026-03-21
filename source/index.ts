@@ -6,6 +6,13 @@ import type { Plugin } from 'rollup'
 
 import self from '#package.json' with { type: 'json' }
 
+// RegExp.escape() is in Node24 but not yet in TypeScript default lib :(
+declare global {
+    interface RegExpConstructor {
+        escape(str: string): string
+    }
+}
+
 type MaybeFalsy<T> = (T) | undefined | null | false
 type MaybeArray<T> = (T) | (T)[]
 
@@ -140,7 +147,7 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
             if (entry instanceof RegExp)
                 result.push(entry)
             else if (isString(entry))
-                result.push(new RegExp('^' + entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
+                result.push(new RegExp('^' + RegExp.escape(entry) + '$'))
             else if (entry)
                 configWarnings.push(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
             return result
@@ -221,10 +228,10 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
                 break
         }
 
-        // Add all dependencies as an include RegEx.
+        // Add all dependencies as a single include RegEx.
         const names = Object.keys(externalDependencies)
         if (names.length > 0)
-            include.push(new RegExp('^(?:' + names.join('|') + ')(?:/.+)?$'))
+            include.push(new RegExp('^(?:' + names.map(RegExp.escape).join('|') + ')(?:/.+)?$'))
     }
 
     const isIncluded = (id: string) => include.length > 0 && include.some(rx => rx.test(id)),
