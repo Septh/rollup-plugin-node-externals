@@ -6,13 +6,6 @@ import type { Plugin } from 'rollup'
 
 import self from '#package.json' with { type: 'json' }
 
-// RegExp.escape() is in Node24 but not yet in TypeScript default lib :(
-declare global {
-    interface RegExpConstructor {
-        escape(str: string): string
-    }
-}
-
 type MaybeFalsy<T> = (T) | undefined | null | false
 type MaybeArray<T> = (T) | (T)[]
 
