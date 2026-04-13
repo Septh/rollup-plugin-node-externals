@@ -4,7 +4,6 @@ import fs from 'node:fs/promises'
 import cp from 'node:child_process'
 import { isBuiltin } from 'node:module'
 import type { Plugin, PluginContext } from 'rollup'
-import type { PackageJson, Entries } from 'type-fest'
 
 import self from '#package.json' with { type: 'json' }
 
@@ -79,6 +78,19 @@ export interface ExternalsOptions {
      * Defaults to `[]` (force exclude nothing).
      */
     exclude?: MaybeArray<MaybeFalsy<string | RegExp>>
+}
+
+type OptionEntries = Array<[ keyof ExternalsOptions, unknown ]>
+
+// Fields of interest in package.json
+interface PackageJson {
+    name: string
+    version: string
+    workspaces?: string[]
+    dependencies?: Record<string, string>
+    devDependencies?: Record<string, string>
+    peerDependencies?: Record<string, string>
+    optionalDependencies?: Record<string, string>
 }
 
 interface ViteCompatiblePlugin extends Plugin {
@@ -180,7 +192,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
         }
 
         // Apply user options.
-        for (const [ key, value ] of Object.entries(options) as Entries<ExternalsOptions>) {
+        for (const [ key, value ] of Object.entries(options) as OptionEntries) {
             switch (key) {
                 case 'include':
                 case 'exclude':
