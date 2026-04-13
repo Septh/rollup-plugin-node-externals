@@ -1,8 +1,9 @@
+import assert from 'node:assert'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 import cp from 'node:child_process'
 import { isBuiltin } from 'node:module'
-import type { Plugin } from 'rollup'
+import type { Plugin, PluginContext } from 'rollup'
 
 import self from '#package.json' with { type: 'json' }
 
@@ -96,7 +97,7 @@ interface ViteCompatiblePlugin extends Plugin {
 }
 
 // Files that mark the root of a monorepo
-const monorepoRootFiles = [
+const monorepoRootFiles: ReadonlyArray<string> = [
     'pnpm-workspace.yaml',  // pnpm
     'lerna.json',           // Lerna / Lerna Light
     'rush.json',            // Rush
@@ -105,115 +106,129 @@ const monorepoRootFiles = [
     // 'nx.json',              // Nx
 ]
 
-/**
- * A Rollup/Vite plugin that automatically declares NodeJS built-in modules,
- * and optionally npm dependencies, as 'external'.
- */
-async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
+// Helpers.
+function isString(str: unknown): str is string {
+    return typeof str === 'string' && str.length > 0
+}
 
-    // Resolve options.
-    const config: Required<ExternalsOptions> = {
-        builtins: true,
-        builtinsPrefix: 'add',
-        packagePath: [],
-        deps: true,
-        devDeps: false,
-        peerDeps: true,
-        optDeps: true,
-        include: [],
-        exclude: []
-    }
+function fileExists(name: string): Promise<boolean>{
+    return fs.stat(name).then(stat => stat.isFile(), () => false)
+}
 
-    const configWarnings: string[] = []
-    for (const [ option, value ] of Object.entries(options)) {
-        if (option in config) {
-            if (value !== undefined && value !== null)
-                (config as Record<string, unknown>)[option] = value
+function directoryExists(name: string): Promise<boolean>{
+    return fs.stat(name).then(stat => stat.isDirectory(), () => false)
+}
+
+class Config {
+    builtins = true
+    builtinsPrefix: NonNullable<ExternalsOptions['builtinsPrefix']> = 'add'
+    packages = new Set<string>()
+    deps = true
+    peerDeps = true
+    optDeps = true
+    devDeps = false
+    include: RegExp[] = []
+    exclude: RegExp[] = []
+
+    async applyOptions(context: PluginContext, options: ExternalsOptions): Promise<Config> {
+
+        // Apply options.
+        for (const [ key, value] of Object.entries(options) as [ keyof ExternalsOptions, unknown ][]) {
+            if (value == undefined)
+                continue
+
+            switch (key) {
+                case 'include':
+                case 'exclude':
+                    this[key] = this[key].concat(value as any).reduce((result, entry: unknown, index) => {
+                        if (entry instanceof RegExp)
+                            result.push(entry)
+                        else if (isString(entry))
+                            result.push(new RegExp('^' + RegExp.escape(entry) + '$'))
+                        else if (entry)
+                            context.warn(`Ignoring wrong entry type #${index} in '${key}' option: ${JSON.stringify(entry)}.`)
+                        return result
+                    }, this[key])
+                    continue
+
+                case 'packagePath':
+                    ([] as unknown[]).concat(value as any).forEach((entry, index) => {
+                        if (isString(entry))
+                            this.packages.add(path.resolve(entry))
+                        else if (entry)
+                            context.warn(`Ignoring wrong entry type #${index} in '${key}' option: ${JSON.stringify(entry)}.`)
+                    })
+                    continue
+
+                case 'builtinsPrefix':
+                    if (value === 'add' || value === 'strip' || value === 'ignore')
+                        this[key] = value
+                    else context.warn(`Ignoring bad value ${JSON.stringify(value)} for option '${key}', using default of 'add'.`)
+                    continue
+
+                case 'builtins':
+                case 'deps':
+                case 'devDeps':
+                case 'optDeps':
+                case 'peerDeps':
+                    this[key] = Boolean(value)
+                    continue
+
+                default:
+                    context.warn(`Ignoring unknown option ${JSON.stringify(key)}.`)
+                    continue
+            }
         }
-        else configWarnings.push(`Ignoring unknown option '${JSON.stringify(option)}'`)
-    }
 
-    // Map the include and exclude options to arrays of regexes.
-    const [ include, exclude ] = ([ 'include', 'exclude' ] as const).map(option => ([] as Array<MaybeFalsy<string | RegExp>>)
-        .concat(config[option])
-        .reduce((result, entry, index) => {
-            if (entry instanceof RegExp)
-                result.push(entry)
-            else if (isString(entry))
-                result.push(new RegExp('^' + RegExp.escape(entry) + '$'))
-            else if (entry)
-                configWarnings.push(`Ignoring wrong entry type #${index} in '${option}' option: ${JSON.stringify(entry)}`)
-            return result
-        }, [] as RegExp[])
-    )
+        // If the packagePath option is not given, get all package.json files
+        // from cwd up to the root of the git repo, the root of the monorepo,
+        // or the root of the volume, whichever comes first.
+        if (this.packages.size === 0) {
 
-    // Populate the packagePath option if not given by getting all package.json files
-    // from cwd up to the root of the git repo, the root of the monorepo,
-    // or the root of the volume, whichever comes first.
-    const packagePaths = ([] as string[])
-        .concat(config.packagePath)
-        .filter(isString)
-        .map(pkg => path.resolve(pkg))
-    if (packagePaths.length === 0) {
-
-        // Ask git the root of the repository, if any.
-        // - If git is not available, resolves with `null`.
-        // - If git says we're not inside a repo, resolves with an empty string ('').
-        // - Otherwise, resolves with the path to the root of the repository.
-        const gitTopLevel = await new Promise<string | null>(resolve => {
-            cp.execFile('git', [ 'rev-parse', '--show-toplevel' ], (error, stdout) => {
-                if (error) {
-                    // - If `execFile()` failed to execute git, `error` is a `NodeJS.ErrnoException`
-                    //   and `error.code` is a string, eg. 'ENOENT' or 'EPERM'.
-                    // - Otherwise, git ran but exited with non-zero and we simply assume this is because
-                    //   we are not inside a repo.
-                    resolve(typeof error.code === 'string' ? null : '')
-                }
-                else resolve(path.normalize(stdout.trim()))
+            // undefined = unknown (couldn't run git), null = not in a repo
+            const gitTopLevel = await new Promise<string | null | undefined>(resolve => {
+                cp.execFile('git', [ 'rev-parse', '--show-toplevel' ], (error, stdout) => resolve(
+                    error ? typeof error.code === 'string' ? undefined : null
+                          : path.normalize(stdout.trim())
+                ))
             })
-        })
 
-        for (let cwd = process.cwd(), previous = ''; previous !== cwd; previous = cwd, cwd = path.dirname(cwd)) {
-            const name = path.join(cwd, 'package.json')
-            if (await fileExists(name))
-                packagePaths.push(name)
+            find_up: for (let cwd = process.cwd(), previous = ''; previous !== cwd; previous = cwd, cwd = path.dirname(cwd)) {
+                let file = path.join(cwd, 'package.json')
+                if (await fileExists(file))
+                    this.packages.add(file)
 
-            // Break early if we are at the root of the git repo.
-            if (cwd === gitTopLevel)
-                break
+                // Break early if we are at the root of the git repo.
+                if (cwd === gitTopLevel || (gitTopLevel === undefined && await directoryExists(path.join(cwd, '.git'))))
+                    break
 
-            // If execFile() failed to run git, this doesn't necessarily mean that we're not in a repo
-            // so fallback to the old method of checking for a `.git` directory.
-            if (gitTopLevel === null && await directoryExists(path.join(cwd, '.git')))
-                break
-
-            // Otherwise, check if there is a known monorepo root file.
-            const checks = await Promise.all(monorepoRootFiles.map(file => fileExists(path.join(cwd, file))))
-            if (checks.some(Boolean))
-                break
+                // Break early if we are at the root of the monorepo.
+                for (file of monorepoRootFiles) {
+                    if (await fileExists(path.join(cwd, file)))
+                        break find_up
+                }
+            }
         }
-    }
 
-    // Gather dependencies names.
-    if (packagePaths.length > 0) {
+        // Gather dependencies names.
         const externalDependencies: Record<string, string> = {}
-
-        for (const pkg of packagePaths) {
-            const json = await fs.readFile(pkg, 'utf-8')
-                .then(text => JSON.parse(text) as PackageJson)
-                .catch((err: NodeJS.ErrnoException | SyntaxError) => err)
+        for (const pkg of this.packages) {
+            const json = await fs.readFile(pkg).then(
+                buffer => JSON.parse(buffer.toString()) as PackageJson,
+                (err: NodeJS.ErrnoException | SyntaxError) => err
+            )
             if (json instanceof Error) {
                 const message = json instanceof SyntaxError
                     ? `File ${JSON.stringify(pkg)} does not look like a valid package.json.`
                     : `Cannot read ${JSON.stringify(pkg)}, error: ${json.code}.`
-                throw new Error(message, { cause: json })
+                context.error({ message, cause: json })
             }
 
             Object.assign(externalDependencies,
-                config.deps     ? json.dependencies         : undefined,
-                config.devDeps  ? json.devDependencies      : undefined,
-                config.peerDeps ? json.peerDependencies     : undefined,
-                config.optDeps  ? json.optionalDependencies : undefined
+                this.deps     ? json.dependencies         : undefined,
+                this.devDeps  ? json.devDependencies      : undefined,
+                this.peerDeps ? json.peerDependencies     : undefined,
+                this.optDeps  ? json.optionalDependencies : undefined
             )
 
             // Break early if this is an npm/yarn workspace root.
@@ -224,11 +239,31 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
         // Add all dependencies as a single include RegEx.
         const names = Object.keys(externalDependencies)
         if (names.length > 0)
-            include.push(new RegExp('^(?:' + names.map(RegExp.escape).join('|') + ')(?:/.+)?$'))
+            this.include.push(new RegExp('^(?:' + names.map(RegExp.escape).join('|') + ')(?:/.+)?$'))
+
+        return this
     }
 
-    const isIncluded = (id: string) => include.length > 0 && include.some(rx => rx.test(id)),
-          isExcluded = (id: string) => exclude.length > 0 && exclude.some(rx => rx.test(id))
+    isIncluded(id: string) {
+        return this.include.length > 0 && this.include.some(rx => rx.test(id))
+    }
+
+    isExcluded(id: string) {
+        return this.exclude.length > 0 && this.exclude.some(rx => rx.test(id))
+    }
+
+    static fromOptions(context: PluginContext, options: ExternalsOptions): Promise<Config> {
+        return new Config().applyOptions(context, options)
+    }
+}
+
+/**
+ * A Rollup/Vite plugin that automatically declares NodeJS built-in modules,
+ * and optionally npm dependencies, as 'external'.
+ */
+function nodeExternals(options: ExternalsOptions = {}): Plugin {
+
+    let config: Config | undefined = undefined
 
     return {
         name: self.name.replace(/^rollup-plugin-/, ''),
@@ -236,15 +271,14 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
         apply: 'build',
         enforce: 'pre',
 
-        buildStart() {
+        async buildStart() {
+            config ??= await Config.fromOptions(this, options)
+            config.packages.forEach(pkg => this.addWatchFile(pkg))
+        },
 
-            // Display initial warnings, if any, but only once.
-            let warning: string | undefined
-            while (warning = configWarnings.shift())
-                this.warn(warning)
-
-            // Watch all package.json
-            packagePaths.forEach(pkg => this.addWatchFile(pkg))
+        watchChange(id) {
+            if (config?.packages.has(id))
+                config = undefined
         },
 
         resolveId(specifier, _, { isEntry }) {
@@ -257,38 +291,27 @@ async function nodeExternals(options: ExternalsOptions = {}): Promise<Plugin> {
             }
 
             // Handle node builtins.
+            assert(config)
             if (isBuiltin(specifier)) {
                 const stripped = specifier.replace(/^node:/, '')
+                const prefixed = 'node:' + stripped
                 return {
-                    id: config.builtinsPrefix === 'ignore'
-                        ? specifier
-                        : config.builtinsPrefix === 'add' || !isBuiltin(stripped)
-                            ? 'node:' + stripped
-                            : stripped,
-                    external: (config.builtins || isIncluded(specifier)) && !isExcluded(specifier),
+                    id: config.builtinsPrefix === 'add'
+                        ? prefixed
+                        : config.builtinsPrefix === 'strip'
+                            ? isBuiltin(stripped) ? stripped : prefixed
+                            : specifier,
+                    external: (config.builtins || config.isIncluded(specifier)) && !config.isExcluded(specifier),
                     moduleSideEffects: false
                 }
             }
 
             // Handle npm dependencies.
-            return isIncluded(specifier) && !isExcluded(specifier)
+            return config.isIncluded(specifier) && !config.isExcluded(specifier)
                 ? false     // external
                 : null      // normal handling
         }
     } as ViteCompatiblePlugin
-
-    // Helpers.
-    function isString(str: unknown): str is string {
-        return typeof str === 'string' && str.length > 0
-    }
-
-    function fileExists(name: string): Promise<boolean>{
-        return fs.stat(name).then(stat => stat.isFile(), () => false)
-    }
-
-    function directoryExists(name: string): Promise<boolean>{
-        return fs.stat(name).then(stat => stat.isDirectory(), () => false)
-    }
 }
 
 export default nodeExternals

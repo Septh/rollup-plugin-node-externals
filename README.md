@@ -124,7 +124,7 @@ Set the `builtins` option to `false` if you'd like to use some shims/polyfills f
 #### builtinsPrefix?: 'add' | 'strip' | 'ignore' = 'add'
 How to handle the `node:` scheme when importing builtins (i.e., `import path from 'node:path'`).
 - If `add` (the default, recommended), the `node:` scheme is always added if missing, so `path` becomes `node:path`. In effect, this dedupes your imports of Node builtins by homogenizing their names to their schemed version.
-- If `strip`, the scheme is always removed, so `node:path` becomes `path`. In effect, this dedupes your imports of Node builtins by homogenizing their names to their scheme-less version. Schemed-only builtins like `node:test` are never stripped.
+- If `strip`, the scheme is always removed, so `node:path` becomes `path`. In effect, this dedupes your imports of Node builtins by homogenizing their names to their scheme-less version. Schemed-only builtins like `node:test` or `node:sqlite` are never stripped.
 - `ignore` will simply leave all builtins imports as written in your code. Caveat: if you write `node:path` but one of your bundled dependencies uses `path` (or the other way around), your bundle will end up with both `node:path` and `path` imports.
 
 >[!NOTE]
@@ -143,8 +143,8 @@ Use the `include` option to force include certain dependencies into the list of 
 
 ```js
 nodeExternals({
-  deps: false,                // Deps will be bundled in
-  include: 'fsevents'         // Except for fsevents
+  deps: false,          // Deps will be bundled in
+  include: 'some-dep'   // Except for 'some-dep'
 })
 ```
 
@@ -153,8 +153,8 @@ Conversely, use the `exclude` option to remove certain dependencies from the lis
 
 ```js
 nodeExternals({
-  deps: true,                 // Keep deps external
-  exclude: 'electron-reload'  // Yet we want `electron-reload` bundled in
+  deps: true,           // Keep deps external
+  exclude: /^this-dep/  // Yet we want `this-dep` (and all its sub-paths) bundled in
 })
 ```
 
@@ -190,7 +190,7 @@ Note that as of version 7.1, this plugin has a `enforce: 'pre'` property that wi
 Rollup's own `external` configuration option always takes precedence over this plugin. This is intentional.
 
 ### 5/ Using with Vite
-This plugin has been compatible with Vite out-of-the-box since version 7.1. If you found an old tutorial on the Internet telling you to use some special trick to make it work with Vite… just don't. This won't work anymore. Here's how you should write your `vite.config.js`:
+This plugin has been compatible with Vite out-of-the-box since version 7.1. If you found an old tutorial on the Internet telling you to use some special trick to make it work with Vite… just don't. Here's how you should write your `vite.config.js`:
 
 ```js
 import { defineConfig } from 'vite'
@@ -211,11 +211,10 @@ export default defineConfig({
 
 ## What's new in v9
 
-This version mainly enhances performance when used in watch mode. This was achieved by moving all initialization code out of the `buildStart` hook.
+This version mainly enhances performance when used in watch mode. This was achieved by ensuring that the `buildStart` hook builds the full dependencies list only when necessary.
 
 ### Breaking changes
 - As initiated with v7, each major update requires at least the **Active LTS** [version of NodeJS](https://github.com/nodejs/Release#release-schedule) at the time of publishing. With v9, this means NodeJS v24+ (up from v8's 20+).
-- The `nodeExternals()` factory function is now async. This doesn't change usage, as both Rollup and Vite support async factories, and you shouldn't even notice. But it breaks the old, deprecated, pointless, Vite compatibility trick.
 
 See [Github releases](https://github.com/Septh/rollup-plugin-node-externals/releases) for full change log.
 
