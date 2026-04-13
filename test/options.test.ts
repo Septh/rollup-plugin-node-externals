@@ -35,7 +35,7 @@ testProp(
     }
 )
 
-test("Warns when given invalid include or exclude entry", async t => {
+test("Warns when given invalid truthy value in 'include'/'exclude'", async t => {
     const okay = 'some_dep' // string is ok
     const notOkay = 1       // number is not (unless 0, which is falsy)
 
@@ -45,8 +45,20 @@ test("Warns when given invalid include or exclude entry", async t => {
     })
 
     t.is(context.warnings.length, 2)
-    t.is(context.warnings[0], `Ignoring wrong entry type #1 in 'include' option: ${JSON.stringify(notOkay)}`)
-    t.is(context.warnings[1], `Ignoring wrong entry type #1 in 'exclude' option: ${JSON.stringify(notOkay)}`)
+    t.is(context.warnings[0], `Ignoring wrong entry type #1 in 'include' option: ${JSON.stringify(notOkay)}.`)
+    t.is(context.warnings[1], `Ignoring wrong entry type #1 in 'exclude' option: ${JSON.stringify(notOkay)}.`)
+})
+
+test("Warns when given invalid truthy value in 'packagePath'", async t => {
+    const okay = './package.json'   // string is ok
+    const notOkay = 1               // number is not (unless 0, which is falsy)
+
+    const context = await initPlugin({
+        packagePath: [ okay, notOkay as any ]
+    })
+
+    t.is(context.warnings.length, 1)
+    t.is(context.warnings[0], `Ignoring wrong entry type #1 in 'packagePath' option: ${JSON.stringify(notOkay)}.`)
 })
 
 test("Obeys 'packagePath' option (single file name)", async t => {
