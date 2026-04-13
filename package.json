@@ -57,16 +57,17 @@
     "#package.json": "./package.json"
   },
   "scripts": {
-    "clean": "node -e \"require('node:fs').rmSync('./dist', { recursive: true, force: true, maxRetries: process.platform === 'win32' ? 10 : 0 })\"",
+    "clean": "rimraf dist",
     "prebuild": "npm run clean",
-    "build": "npm run build:js && npm run build:dts",
+    "build": "npm run buildOnly",
+    "buildOnly": "npm run build:js && npm run build:dts",
     "build:js": "tsc -p tsconfig.build.json --removeComments",
     "build:dts": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly",
-    "pretest": "npm run build",
+    "pretest": "npm run buildOnly",
     "test": "npm run testOnly",
     "testOnly": "ava",
     "lint": "eslint source/index.ts",
-    "prepublishOnly": "npm run lint && npm run build"
+    "prepublishOnly": "npm run lint && npm run buildOnly"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -77,8 +78,10 @@
     "eslint": "^10.1.0",
     "fast-check": "^4.2.0",
     "globals": "^17.4.0",
+    "rimraf": "^6.1.3",
     "rollup": "^4.28.1",
     "tslib": "^2.8.1",
+    "type-fest": "^5.5.0",
     "typescript": "^6.0.0",
     "typescript-eslint": "^8.57.1"
   },

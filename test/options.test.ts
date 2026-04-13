@@ -35,7 +35,17 @@ testProp(
     }
 )
 
-test("Warns when given invalid truthy value in 'include'/'exclude'", async t => {
+test("Warns when given invalid value for 'builtinsPrefix'", async t => {
+    const builtinsPrefix = 'maybe' as NonNullable<ExternalsOptions['builtinsPrefix']>
+    const context = await initPlugin({
+        builtinsPrefix
+    })
+
+    t.is(context.warnings.length, 1)
+    t.is(context.warnings[0], `Ignoring bad value ${JSON.stringify(builtinsPrefix)} for option 'builtinsPrefix', using default of 'add'.`)
+})
+
+test("Warns when given invalid truthy value for 'include'/'exclude'", async t => {
     const okay = 'some_dep' // string is ok
     const notOkay = 1       // number is not (unless 0, which is falsy)
 
@@ -49,7 +59,7 @@ test("Warns when given invalid truthy value in 'include'/'exclude'", async t => 
     t.is(context.warnings[1], `Ignoring wrong entry type #1 in 'exclude' option: ${JSON.stringify(notOkay)}.`)
 })
 
-test("Warns when given invalid truthy value in 'packagePath'", async t => {
+test("Warns when given invalid truthy value for 'packagePath'", async t => {
     const okay = './package.json'   // string is ok
     const notOkay = 1               // number is not (unless 0, which is falsy)
 
@@ -59,6 +69,16 @@ test("Warns when given invalid truthy value in 'packagePath'", async t => {
 
     t.is(context.warnings.length, 1)
     t.is(context.warnings[0], `Ignoring wrong entry type #1 in 'packagePath' option: ${JSON.stringify(notOkay)}.`)
+})
+
+test("Warns on unknown option name", async t => {
+    const unknownOption: string = 'unknownOption'
+    const context = await initPlugin({
+        [unknownOption]: true
+    })
+
+    t.is(context.warnings.length, 1)
+    t.is(context.warnings[0], `Ignoring unknown option ${JSON.stringify(unknownOption)}.`)
 })
 
 test("Obeys 'packagePath' option (single file name)", async t => {
