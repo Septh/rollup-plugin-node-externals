@@ -136,14 +136,10 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                 config = undefined
         },
 
-        resolveId(specifier, _, { isEntry }) {
-            if (
-                isEntry                                 // Ignore entry points
-                || /^(?:\0|\.{1,2}\/)/.test(specifier)  // Ignore virtual modules and relative imports
-                || path.isAbsolute(specifier)           // Ignore already resolved ids
-            ) {
+        resolveId(specifier, _importer, { isEntry }) {
+            // Ignore entry points, virtual modules, relative imports and already resolved ids.
+            if (isEntry || /^(?:\0|\.{1,2}\/)/.test(specifier) || path.isAbsolute(specifier))
                 return null
-            }
 
             // Handle node builtins.
             assert(config)
@@ -301,12 +297,8 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
         }
 
         function* walkUp(from: string): Generator<string> {
-            let previous = ''
-            while (previous !== from) {
-                yield from
-                previous = from
-                from = path.dirname(from)
-            }
+            for (let curr = from, prev = ''; prev !== curr; prev = curr, curr = path.dirname(curr))
+                yield curr
         }
 
         function fileExists(name: string): Promise<boolean>{
