@@ -6,6 +6,9 @@
   "compilerOptions": {
     "rootDir": "source",
     "outDir": "dist",
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
     "allowJs": false,
     "checkJs": false,
     "noEmit": false,

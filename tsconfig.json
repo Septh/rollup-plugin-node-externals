@@ -18,7 +18,6 @@
 
     // Output
     "rewriteRelativeImportExtensions": true,
-    "sourceMap": true,
     "noEmit": true,
 
     // Type checking

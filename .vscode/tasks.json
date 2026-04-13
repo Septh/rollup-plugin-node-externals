@@ -2,10 +2,18 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "clean",
+      "type": "npm",
+      "script": "clean",
+      "presentation": {
+        "reveal": "silent",
+        "clear": true
+      }
+    },
+    {
       "label": "npm: lint",
       "type": "npm",
       "script": "lint",
-      "detail": "eslint src/index.ts",
       "problemMatcher": "$eslint-stylish"
     },
     {
@@ -24,8 +32,10 @@
         "echo": true,
         "reveal": "silent",
       },
+      "dependsOn": [ "clean" ],
+      "dependsOrder": "sequence",
       "runOptions": {
-        "runOn": "folderOpen"
+        // "runOn": "folderOpen"
       }
     }
   ]

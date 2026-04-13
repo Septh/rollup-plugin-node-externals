@@ -61,7 +61,7 @@
     "prebuild": "npm run clean",
     "build": "npm run buildOnly",
     "buildOnly": "npm run build:js && npm run build:dts",
-    "build:js": "tsc -p tsconfig.build.json --removeComments",
+    "build:js": "tsc -p tsconfig.build.json --declaration false --declarationMap false --removeComments",
     "build:dts": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly",
     "pretest": "npm run buildOnly",
     "test": "npm run testOnly",
