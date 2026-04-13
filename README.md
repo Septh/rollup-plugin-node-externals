@@ -91,7 +91,7 @@ export default {
       builtins?: boolean
 
       // node: prefix handing for importing NodeJS builtins. Default: 'add'.
-      builtinsPrefix?: 'add' | 'strip' | 'ignore'
+      builtinsPrefix?: boolean | 'add' | 'strip' | 'ignore'
 
       // The path(s) to your package.json. Default: read below.
       packagePath?: string | string[]
@@ -121,10 +121,10 @@ export default {
 #### builtins?: boolean = true
 Set the `builtins` option to `false` if you'd like to use some shims/polyfills for those. You'll most certainly need [an other plugin](https://www.npmjs.com/package/rollup-plugin-node-polyfills) as well.
 
-#### builtinsPrefix?: 'add' | 'strip' | 'ignore' = 'add'
+#### builtinsPrefix?: boolean | 'add' | 'strip' | 'ignore' = 'add'
 How to handle the `node:` scheme when importing builtins (i.e., `import path from 'node:path'`).
-- If `add` (the default, recommended), the `node:` scheme is always added if missing, so `path` becomes `node:path`. In effect, this dedupes your imports of Node builtins by homogenizing their names to their schemed version.
-- If `strip`, the scheme is always removed, so `node:path` becomes `path`. In effect, this dedupes your imports of Node builtins by homogenizing their names to their scheme-less version. Schemed-only builtins like `node:test` or `node:sqlite` are never stripped.
+- If `add` or `true` (the default, recommended), the `node:` scheme is always added if missing, so `path` becomes `node:path`. In effect, this dedupes your imports of Node builtins by homogenizing their names to their schemed version.
+- If `strip` or `false`, the scheme is always removed, so `node:path` becomes `path`. In effect, this dedupes your imports of Node builtins by homogenizing their names to their scheme-less version. Schemed-only builtins like `node:test` or `node:sqlite` are never stripped.
 - `ignore` will simply leave all builtins imports as written in your code. Caveat: if you write `node:path` but one of your bundled dependencies uses `path` (or the other way around), your bundle will end up with both `node:path` and `path` imports.
 
 >[!NOTE]

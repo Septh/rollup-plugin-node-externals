@@ -28,7 +28,7 @@ export interface ExternalsOptions {
      *
      * Defaults to `'add'`.
      */
-    builtinsPrefix?: 'add' | 'strip' | 'ignore'
+    builtinsPrefix?: boolean | 'add' | 'strip' | 'ignore'
 
     /**
      * Path/to/your/package.json file (or array of paths).
@@ -208,9 +208,9 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                     continue
 
                 case 'builtinsPrefix':
-                    if (value === 'add')
+                    if (value === 'add' || value === true)
                         config.prefix = true
-                    else if (value === 'strip')
+                    else if (value === 'strip' || value === false)
                         config.prefix = false
                     else if (value === 'ignore')
                         config.prefix = null
