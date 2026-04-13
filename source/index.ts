@@ -80,8 +80,6 @@ export interface ExternalsOptions {
     exclude?: MaybeArray<MaybeFalsy<string | RegExp>>
 }
 
-type OptionEntries = Array<[ keyof ExternalsOptions, unknown ]>
-
 // Fields of interest in package.json
 interface PackageJson {
     name: string
@@ -114,12 +112,6 @@ interface Config {
     builtins:   boolean
     prefix:     boolean | null  // true = 'add', false = 'strip', null = 'ignore'
     packages:   Set<string>
-    deps:       boolean
-    peerDeps:   boolean
-    optDeps:    boolean
-    devDeps:    boolean
-    include:    RegExp[]
-    exclude:    RegExp[]
     isIncluded: (id: string) => boolean
     isExcluded: (id: string) => boolean
 }
@@ -181,38 +173,23 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
             builtins: true,
             prefix: true,
             packages: new Set(),
-            deps: true,
-            peerDeps: true,
-            optDeps: true,
-            devDeps: false,
-            include: [],
-            exclude: [],
             isIncluded,
             isExcluded
         }
 
-        // Apply user options.
-        for (const [ key, value ] of Object.entries(options) as OptionEntries) {
-            switch (key) {
-                case 'include':
-                case 'exclude':
-                    emptyArray.concat(value).forEach((entry, index) => {
-                        if (entry instanceof RegExp)
-                            config[key].push(entry)
-                        else if (isString(entry))
-                            config[key].push(new RegExp('^' + RegExp.escape(entry) + '$'))
-                        else if (entry)
-                            this.warn(`Ignoring wrong entry type #${index} in '${key}' option: ${JSON.stringify(entry)}.`)
-                    })
-                    continue
+        const include: RegExp[] = []
+        const exclude: RegExp[] = []
 
-                case 'packagePath':
-                    emptyArray.concat(value).forEach((entry, index) => {
-                        if (isString(entry))
-                            config.packages.add(path.resolve(entry))
-                        else if (entry)
-                            this.warn(`Ignoring wrong entry type #${index} in '${key}' option: ${JSON.stringify(entry)}.`)
-                    })
+        let deps = true,
+            peerDeps = true,
+            optDeps = true,
+            devDeps = false
+
+        // Apply user options.
+        for (const [ key, value ] of Object.entries(options) as Array<[ keyof ExternalsOptions, unknown ]>) {
+            switch (key) {
+                case 'builtins':
+                    config.builtins = Boolean(value)
                     continue
 
                 case 'builtinsPrefix':
@@ -225,13 +202,32 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                     else this.warn(`Ignoring bad value ${JSON.stringify(value)} for option '${key}', using default of 'add'.`)
                     continue
 
-                case 'builtins':
-                case 'deps':
-                case 'devDeps':
-                case 'optDeps':
-                case 'peerDeps':
-                    config[key] = Boolean(value)
+                case 'packagePath':
+                    emptyArray.concat(value).forEach((entry, index) => {
+                        if (isString(entry))
+                            config.packages.add(path.resolve(entry))
+                        else if (entry)
+                            this.warn(`Ignoring wrong entry type #${index} in '${key}' option: ${JSON.stringify(entry)}.`)
+                    })
                     continue
+
+                case 'include':
+                case 'exclude':
+                    emptyArray.concat(value).reduce<RegExp[]>((array, entry, index) => {
+                        if (entry instanceof RegExp)
+                            array.push(entry)
+                        else if (isString(entry))
+                            array.push(new RegExp('^' + RegExp.escape(entry) + '$'))
+                        else if (entry)
+                            this.warn(`Ignoring wrong entry type #${index} in '${key}' option: ${JSON.stringify(entry)}.`)
+                        return array
+                    }, key === 'include' ? include : exclude)
+                    continue
+
+                case 'deps':     deps     = Boolean(value); continue
+                case 'optDeps':  optDeps  = Boolean(value); continue
+                case 'peerDeps': peerDeps = Boolean(value); continue
+                case 'devDeps':  devDeps  = Boolean(value); continue
 
                 default:
                     this.warn(`Ignoring unknown option ${JSON.stringify(key)}.`)
@@ -285,10 +281,10 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
             }
 
             Object.assign(externalDependencies,
-                config.deps     ? json.dependencies         : undefined,
-                config.devDeps  ? json.devDependencies      : undefined,
-                config.peerDeps ? json.peerDependencies     : undefined,
-                config.optDeps  ? json.optionalDependencies : undefined
+                deps     ? json.dependencies         : undefined,
+                devDeps  ? json.devDependencies      : undefined,
+                peerDeps ? json.peerDependencies     : undefined,
+                optDeps  ? json.optionalDependencies : undefined
             )
 
             // Break early if this is an npm/yarn workspace root.
@@ -299,7 +295,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
         // Add all dependencies as a single include RegEx.
         const names = Object.keys(externalDependencies)
         if (names.length > 0)
-            config.include.push(new RegExp('^(?:' + names.map(RegExp.escape).join('|') + ')(?:/.+)?$'))
+            include.push(new RegExp('^(?:' + names.map(RegExp.escape).join('|') + ')(?:/.+)?$'))
 
         return config
 
@@ -308,8 +304,8 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
             return typeof str === 'string' && str.length > 0
         }
 
-        function* walkUp(from: string): Generator<string> {
-            for (let curr = from, prev = ''; prev !== curr; prev = curr, curr = path.dirname(curr))
+        function* walkUp(start: string): Generator<string> {
+            for (let curr = start, prev = ''; prev !== curr; prev = curr, curr = path.dirname(curr))
                 yield curr
         }
 
@@ -321,12 +317,12 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
             return fs.stat(name).then(stat => stat.isDirectory(), () => false)
         }
 
-        function isIncluded(this: Config, id: string) {
-            return this.include.length > 0 && this.include.some(rx => rx.test(id))
+        function isIncluded(id: string) {
+            return include.length > 0 && include.some(rx => rx.test(id))
         }
 
-        function isExcluded(this: Config, id: string) {
-            return this.exclude.length > 0 && this.exclude.some(rx => rx.test(id))
+        function isExcluded(id: string) {
+            return exclude.length > 0 && exclude.some(rx => rx.test(id))
         }
     }
 }
