@@ -140,7 +140,7 @@ class Config {
             switch (key) {
                 case 'include':
                 case 'exclude':
-                    this[key] = this[key].concat(value as any).reduce((result, entry: unknown, index) => {
+                    this[key] = this[key].concat(value as RegExp[]).reduce((result, entry: unknown, index) => {
                         if (entry instanceof RegExp)
                             result.push(entry)
                         else if (isString(entry))
@@ -152,7 +152,7 @@ class Config {
                     continue
 
                 case 'packagePath':
-                    ([] as unknown[]).concat(value as any).forEach((entry, index) => {
+                    ([] as unknown[]).concat(value as string[]).forEach((entry, index) => {
                         if (isString(entry))
                             this.packages.add(path.resolve(entry))
                         else if (entry)
