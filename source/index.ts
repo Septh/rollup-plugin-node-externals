@@ -171,7 +171,7 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
         // Set defaults.
         const config: Config = {
             builtins: true,
-            prefix: true,
+            prefix:   true,
             packages: new Set(),
             isIncluded,
             isExcluded
@@ -199,7 +199,8 @@ function nodeExternals(options: ExternalsOptions = {}): Plugin {
                         config.prefix = false
                     else if (value === 'ignore')
                         config.prefix = null
-                    else this.warn(`Ignoring bad value ${JSON.stringify(value)} for option '${key}', using default of 'add'.`)
+                    else if (value)
+                        this.warn(`Ignoring bad value ${JSON.stringify(value)} for option '${key}', using default of 'add'.`)
                     continue
 
                 case 'packagePath':
